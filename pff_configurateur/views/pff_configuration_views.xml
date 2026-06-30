@@ -29,7 +29,7 @@
             <form string="Produit configuré">
                 <header>
                     <button name="action_open_configurator" type="object"
-                            string="Configurer le produit" class="btn-primary" icon="fa-cubes"/>
+                            string="Nouvelle configuration" class="btn-primary" icon="fa-cubes"/>
                     <button name="action_create_quotation" type="object"
                             string="Créer un devis" class="btn-primary"
                             invisible="sale_order_id"/>

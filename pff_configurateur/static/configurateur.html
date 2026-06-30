@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PFF — Configurateur (paramétrage) · prototype</title>
+<style>
+  :root { --bg:#1e2228; --panel:#2a2f37; --panel2:#222730; --line:#3a414b; --txt:#e7ebf0; --muted:#9aa3af; --accent:#4ea1ff; --ok:#46c08a; --warn:#e0a93a; --bad:#e0625a; }
+  * { box-sizing: border-box; }
+  html,body { margin:0; height:100%; font-family:"Segoe UI",Roboto,system-ui,sans-serif; color:var(--txt); background:var(--bg); font-size:13px; }
+  #app { display:flex; flex-direction:column; height:100vh; }
+  #controls { width:100%; flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line); padding:8px 6px; display:flex; flex-wrap:wrap; align-items:stretch; max-height:48vh; overflow-y:auto; }
+  #stage { flex:1; display:flex; flex-direction:column; min-width:0; }
+  #view3d { flex:1; position:relative; min-height:160px; }
+  #view3d canvas { display:block; width:100%; height:100%; }
+  #bottom { height:300px; flex:0 0 300px; background:var(--panel2); border-top:1px solid var(--line); display:flex; flex-direction:column; }
+  #tabs { display:flex; gap:2px; padding:6px 8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .tab { padding:6px 12px; font-size:12px; color:var(--muted); cursor:pointer; border:1px solid transparent; border-bottom:none; border-radius:6px 6px 0 0; }
+  .tab.active { color:var(--txt); background:var(--bg); border-color:var(--line); }
+  #tabbody { flex:1; overflow:auto; padding:12px 16px; }
+  h1 { font-size:14px; margin:0 0 2px; }
+  .sub { font-size:10px; color:var(--muted); margin:0 0 14px; line-height:1.4; }
+  .grp { padding:2px 16px; border-right:1px solid var(--line); min-width:200px; }
+  .grp:last-child{border-right:none;}
+  #controls label{ margin:6px 0 2px; }
+  .opensecs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; }
+  .oscb{ display:flex; align-items:center; gap:3px; margin:0; font-size:12px; color:var(--txt); cursor:pointer; }
+  .oscb input{ width:auto; }
+  .gh { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin:0 0 8px; }
+  label { display:block; font-size:11px; color:var(--muted); margin:8px 0 3px; }
+  .val { color:var(--accent); font-weight:600; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  select,button,input[type=number]{ width:100%; padding:6px 7px; background:#1b1f25; color:var(--txt); border:1px solid var(--line); border-radius:6px; font-size:12px; }
+  .two{ display:flex; gap:8px; } .two>*{ flex:1; }
+  .help{ display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:1px solid var(--muted); color:var(--muted); font-size:9px; font-weight:700; cursor:help; margin-left:5px; vertical-align:middle; }
+  .help:hover{ border-color:var(--accent); color:var(--accent); }
+  table{ border-collapse:collapse; width:100%; font-size:12px; }
+  th,td{ text-align:left; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th{ color:var(--muted); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
+  td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .b-ok{ background:rgba(70,192,138,.15); color:var(--ok); } .b-warn{ background:rgba(224,169,58,.15); color:var(--warn); }
+  .b-bad{ background:rgba(224,98,90,.15); color:var(--bad); } .b-na{ background:rgba(154,163,175,.15); color:var(--muted); }
+  .hint{ position:absolute; bottom:8px; left:10px; font-size:11px; color:#5a6675; background:rgba(255,255,255,.7); padding:4px 8px; border-radius:6px; }
+  .price{ position:absolute; top:10px; right:12px; z-index:5; background:rgba(20,24,30,.82); color:#fff; padding:8px 12px; border-radius:8px; font-size:17px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .price small{ font-size:10px; font-weight:500; opacity:.8; }
+  .viewbtns{ position:absolute; top:10px; left:12px; z-index:5; display:flex; }
+  .vbtn{ width:auto; padding:6px 14px; font-size:12px; background:rgba(255,255,255,.85); color:#2a2f37; border:1px solid #c5ccd4; cursor:pointer; }
+  .vbtn:first-child{ border-radius:7px 0 0 7px; } .vbtn:last-child{ border-radius:0 7px 7px 0; border-left:none; }
+  .vbtn.on{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .note{ font-size:10px; color:var(--muted); margin-top:10px; font-style:italic; }
+  .desc{ white-space:pre-wrap; font-family:"Consolas",monospace; font-size:12px; line-height:1.5; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .pill{ font-size:10px; color:var(--muted); }
+  /* ---- Bons de travail ---- */
+  .poste-band{ display:inline-flex; align-items:center; vertical-align:middle; }
+  .poste{ font-size:9px; font-weight:700; color:#fff; padding:3px 12px 3px 16px; margin-left:-5px; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
+    clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%,7px 50%); }
+  .poste:first-child{ clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%); margin-left:0; }
+  .poste.scie{background:#e07a2e;} .poste.poincon{background:#e89a4e;} .poste.soudage{background:#3a7bd5;}
+  .poste.sousens{background:#b455a0;} .poste.assemblage{background:#b455a0;} .poste.achat{background:#6b7480;}
+  .poste.dim{ opacity:.32; }
+  .bt-poste{ display:flex; align-items:center; gap:6px; }
+  .bt-poste label{ margin:0; font-size:11px; color:var(--muted); }
+  .bt-poste select{ width:auto; padding:3px 7px; font-size:11px; }
+  .bt-head{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 10px; background:var(--panel); border:1px solid var(--line); border-radius:6px; margin-bottom:10px; }
+  .bt-sec{ margin-bottom:14px; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .bt-sec-h{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 10px; background:var(--panel2); border-bottom:1px solid var(--line); }
+  .bt-sec-t{ font-size:12px; font-weight:700; letter-spacing:.04em; }
+  .bt-sec-left{ display:flex; align-items:center; gap:10px; }
+  .stsel{ width:auto; padding:2px 7px; font-size:11px; }
+  .bt-tbl td.cas{ color:var(--muted); font-size:11px; }
+  .etq{ width:340px; max-width:100%; border:1px solid #cdd6e0; border-radius:4px; background:#fff; color:#1a1d22; padding:8px 10px; margin:8px 0; }
+  .etq-h{ display:flex; justify-content:space-between; font-size:12px; font-weight:700; border-bottom:1px solid #1a1d22; padding-bottom:3px; }
+  .etq-cli{ font-size:11px; margin:3px 0; }
+  .etq-t{ font-size:11px; font-weight:600; border-top:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 0; margin:3px 0; }
+  .etq-body{ font-size:10px; white-space:pre-wrap; line-height:1.5; font-family:Consolas,monospace; }
+  .barcode{ height:34px; margin-top:6px; background:repeating-linear-gradient(90deg,#1a1d22 0,#1a1d22 2px,#fff 2px,#fff 4px,#1a1d22 4px,#1a1d22 5px,#fff 5px,#fff 9px,#1a1d22 9px,#1a1d22 11px,#fff 11px,#fff 13px); }
+  .barcode-txt{ font-size:11px; letter-spacing:.3em; text-align:center; color:#1a1d22; }
+  /* ---- Commande (chips) ---- */
+  .orderlist{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; max-width:250px; }
+  .chip{ display:inline-flex; align-items:center; gap:5px; background:#1b1f25; border:1px solid var(--line); border-radius:10px; padding:2px 6px 2px 8px; font-size:10px; }
+  .chip b{ cursor:pointer; color:var(--bad); font-size:13px; line-height:1; }
+  .chip.clr{ cursor:pointer; color:var(--warn); }
+  /* ---- Assemblage : étiquettes ---- */
+  .etq-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; }
+  .etq2{ display:grid; grid-template-columns:1fr 44px; gap:4px; border:1px solid #cdd6e0; background:#fff; color:#111; padding:8px 10px; border-radius:4px; }
+  .etq2-box{ border:1px solid #333; padding:4px 6px; }
+  .etq2 .small{ font-size:8px; color:#555; }
+  .etq2 .er{ display:flex; justify-content:space-between; font-size:12px; border-bottom:1px solid #111; padding-bottom:2px; }
+  .etq2 .er2{ font-size:9px; border-bottom:1px solid #ccc; padding:1px 0; }
+  .etq2 .er3{ font-size:10px; font-weight:600; padding:3px 0; }
+  .etq2 .er4{ display:flex; gap:6px; font-size:9px; align-items:flex-start; padding-top:2px; }
+  .etq2-bul{ font-size:9px; white-space:pre-wrap; line-height:1.45; font-family:Consolas,monospace; margin:4px 0; color:#111; }
+  .etq2-side{ display:flex; flex-direction:column; align-items:center; }
+  .etq2-cmd{ display:flex; flex-direction:column; align-items:center; font-weight:800; font-size:19px; line-height:1.0; color:#111; }
+  .etq2-itemno{ font-size:30px; font-weight:800; margin-top:12px; color:#111; }
+  .etq2 .barcode{ margin-top:6px; }
+  /* ---- En-tête d'item (onglets données multi-produits) ---- */
+  .item-h{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--accent); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+  .item-h:first-child{ margin-top:2px; }
+  .item-no{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#0b0f14; font-size:11px; font-weight:800; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="controls">
+    <div class="grp" style="min-width:150px;display:flex;flex-direction:column;justify-content:center">
+      <h1>PFF — Configurateur</h1>
+      <p class="sub" style="margin:0">Prototype de <b>paramétrage</b>.<br>Survole les <b>?</b> pour l'aide.</p>
+    </div>
+
+    <div class="grp">
+      <div class="gh">Produit</div>
+      <label>Famille <span class="help" title="Type de menuiserie. Détermine la cinématique (ouvrant/fixe/porte) et les composants générés.">?</span></label>
+      <select id="family">
+        <optgroup label="Fenêtres">
+          <option value="battant">Battant (Casement)</option>
+          <option value="guillotine">Guillotine simple (Single hung)</option>
+          <option value="coulissant" selected>Coulissant simple (Slider)</option>
+          <option value="fixe">Fixe (Fixed)</option>
+        </optgroup>
+        <optgroup label="Portes">
+          <option value="porte_ext">Porte d'entrée (extérieure)</option>
+          <option value="porte_int">Porte intérieure</option>
+          <option value="porte_patio">Porte patio (coulissante)</option>
+        </optgroup>
+      </select>
+      <div id="famOpts"></div>
+    </div>
+
+    <div class="grp">
+      <div class="gh">Dimensions</div>
+      <label>Unité d'affichage <span class="help" title="Unité d'affichage seulement. Le stockage interne reste en mm (précision usine). Arrondi pouces au 1/16.">?</span></label>
+      <select id="unit"><option value="mm">mm</option><option value="frac">pouces fractionnaires</option><option value="dec">pouces décimaux</option><option value="ftin">pieds / pouces</option></select>
+      <label>Largeur : <span class="val" id="wLbl"></span> <span class="help" title="Largeur hors-tout du cadre (dormant), de bord extérieur à bord extérieur.">?</span></label>
+      <input type="range" id="w" min="450" max="2400" step="3.175" value="1219" />
+      <label>Hauteur : <span class="val" id="hLbl"></span> <span class="help" title="Hauteur hors-tout du cadre (dormant).">?</span></label>
+      <input type="range" id="h" min="450" max="2400" step="3.175" value="914" />
+      <label>Imposte (fixe au-dessus) <span class="help" title="Section vitrée fixe ajoutée au-dessus (transom) ; crée un meneau de jumelage. Répond au « fixe sur le dessus » de l'appel d'offres.">?</span></label>
+      <select id="imposte"><option value="none">Aucune</option><option value="on">Imposte fixe</option></select>
+      <label>Imposte — largeur <span class="help" title="Largeur de l'imposte (fraction de la largeur de la fenêtre ; 100% = pleine largeur).">?</span></label>
+      <input type="range" id="imposteW" min="0.3" max="1" step="0.02" value="1" />
+      <label>Imposte — hauteur : <span class="val" id="impHLbl"></span> <span class="help" title="Hauteur de l'imposte.">?</span></label>
+      <input type="range" id="imposteH" min="150" max="800" step="10" value="350" />
+    </div>
+
+    <div class="grp">
+      <div class="gh">Cadre & verre</div>
+      <label>Cadre <span class="help" title="Profilé du dormant fixé au mur. 'Flush' = affleurant. Détermine les déductions de coupe.">?</span></label>
+      <select id="cadre"><option value="9920I-20582|Cadre 5 5/8">Cadre 5 5/8</option><option value="9800-21383|Cadre 5 5/8 Flush">Cadre 5 5/8 Flush</option></select>
+      <label>Verre / Thermos <span class="help" title="Unité scellée (thermos). Double/Triple Low-E + gaz argon = performance énergétique. La teinte change l'aspect.">?</span></label>
+      <select id="verre"><option value="double|clair">Double 1 Low-E Argon — clair</option><option value="double|bronze">Double 1 Low-E Argon — bronze</option><option value="double|gray">Double 1 Low-E Argon — gris</option><option value="triple|clair">Triple Low-E Argon — clair</option></select>
+      <label>Aspect du verre <span class="help" title="Transparent (standard) ou dépoli/givré pour l'intimité (salle de bain, porte).">?</span></label>
+      <select id="aspect"><option value="clair">Transparent</option><option value="depoli">Dépoli / givré</option></select>
+    </div>
+
+    <div class="grp">
+      <div class="gh">Couleurs & finitions</div>
+      <div class="two">
+        <div><label>Couleur ext. <span class="help" title="Teinte du PVC côté extérieur (visible de la rue).">?</span></label>
+          <select id="colExt"><option value="white">Blanc</option><option value="black" selected>Noir</option><option value="anthracite">Anthracite</option><option value="brown">Commercial brun</option><option value="oak">Chêne</option><option value="greyoak">Chêne gris</option></select></div>
+        <div><label>Couleur int. <span class="help" title="Teinte côté intérieur. Différente de l'ext = bicolore (laminé). Visible ici sur le soufflage intérieur.">?</span></label>
+          <select id="colInt"><option value="white" selected>Blanc</option><option value="black">Noir</option><option value="anthracite">Anthracite</option><option value="oak">Chêne</option><option value="greyoak">Chêne gris</option></select></div>
+      </div>
+      <label>Moulure ext. <span class="help" title="Finition extérieure : 'brique' s'encastre dans le parement de brique ; 'J-trim' pour revêtement de vinyle. Apparaît en 3D.">?</span></label>
+      <select id="moulure"><option value="none">Aucune</option><option value="1">Brique 1″</option><option value="1.5">Brique 1½″</option><option value="2">Brique 2″</option><option value="j">J-trim (vinyle)</option></select>
+      <label>Soufflage int. <span class="help" title="Extension intérieure pour aligner la fenêtre à l'épaisseur du mur (2x4 ≈ 4 9/16, 2x6 ≈ 6 1/4). Apparaît en 3D, couleur intérieure.">?</span></label>
+      <select id="soufflage"><option value="none">Aucun</option><option value="4 9/16">4 9/16″ (mur 2×4)</option><option value="6 1/4" selected>6 1/4″ (2×6)</option><option value="6 9/16">6 9/16″ (2×6 +)</option></select>
+      <label>Croisillons (petits-bois) <span class="help" title="Grilles décoratives sur le verre : carrés (colonial), prairie (bordure) ou croix centrale. Visibles en 3D.">?</span></label>
+      <select id="grilles"><option value="none">Aucun</option><option value="colonial">Carrés (colonial)</option><option value="prairie">Prairie</option><option value="croix">Croix centrale</option></select>
+    </div>
+
+    <div class="grp">
+      <div class="gh">Quincaillerie & accessoires</div>
+      <label>Quincaillerie <span class="help" title="Mécanismes : poignée, opérateur, serrure, balance. La finition affecte l'aspect de la poignée en 3D.">?</span></label>
+      <select id="quinc"><option>Stainless (garantie à vie)</option><option>Standard blanc</option></select>
+      <label>Coupe-froid <span class="help" title="Joint d'étanchéité périphérique (couleur). Empêche l'infiltration d'air/eau. Génère une ligne de composant.">?</span></label>
+      <select id="coupe"><option>Gris</option><option>Noir</option></select>
+      <label><input type="checkbox" id="moust" checked style="width:auto"> Moustiquaire fibre de verre <span class="help" title="Treillis amovible en fibre de verre. Indispensable au Québec. Génère une ligne de composant + fabrication différée possible.">?</span></label>
+    </div>
+
+    <div class="grp" style="min-width:250px">
+      <div class="gh">Commande (multi-produits)</div>
+      <div class="two">
+        <div><label>Qté <span class="help" title="Nombre de fenêtres identiques pour ce produit (multiplie les pièces de coupe). 1 étiquette par item.">?</span></label><input type="number" id="itemQty" min="1" value="1"></div>
+        <div><label>&nbsp;</label><button id="addItem">➕ Ajouter à la commande</button></div>
+      </div>
+      <div id="orderList" class="orderlist"></div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="view3d"><div id="viewBtns" class="viewbtns"><button data-v="ext" class="vbtn on">Extérieur</button><button data-v="int" class="vbtn">Intérieur</button></div><div id="price" class="price"></div><div class="hint">Glisser = tourner · molette = zoom · <b>clique sur le produit</b> pour l'ouvrir / fermer</div></div>
+    <div id="bottom">
+      <div id="tabs">
+        <div class="tab active" data-t="dessin">Vue 2D cotée</div>
+        <div class="tab" data-t="fiche">Fiche technique (FR/EN)</div>
+        <div class="tab" data-t="decoupe">Découpe & composants</div>
+        <div class="tab" data-t="thermos">Thermos (achat)</div>
+        <div class="tab" data-t="bons">Bons de travail</div>
+        <div class="tab" data-t="assemblage">Assemblage</div>
+        <div class="tab" data-t="valid">Validations</div>
+        <div class="tab" data-t="unites">Unités</div>
+      </div>
+      <div id="tabbody"></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ===== MODÈLE DE CONFIGURATION ===== */
+const FAMILIES = {
+  battant:    { fr:'Battant', en:'Casement', code:'Battant PVC', sections:1, split:'none', operable:true, hw:'manivelle', door:false },
+  guillotine: { fr:'Guillotine simple', en:'Single hung', code:'Guillotine Simple PVC', sections:2, split:'v', operable:true, hw:'balance à ressort', door:false },
+  coulissant: { fr:'Coulissant simple', en:'Single slider', code:'Coulissant Simple PVC', sections:2, split:'h', operable:true, hw:'barrure coulissante', door:false },
+  fixe:       { fr:'Fixe', en:'Fixed', code:'Fixe PVC', sections:1, split:'none', operable:false, hw:'aucune', door:false },
+  porte_ext:  { fr:"Porte d'entrée", en:'Entry door', code:'Porte Extérieure', sections:1, split:'none', operable:true, hw:'serrure multipoints', door:true },
+  porte_int:  { fr:'Porte intérieure', en:'Interior door', code:'Porte Intérieure', sections:1, split:'none', operable:true, hw:'poignée', door:true },
+  porte_patio:{ fr:'Porte patio', en:'Patio door', code:'Porte Patio PVC', sections:2, split:'h', operable:true, hw:'coulissante', door:true },
+};
+
+/* RÈGLES — table externalisée (#17). Déductions calibrées sur la commande 031735 → À VALIDER. */
+const REGLES = {
+  perte_soudure_mm:6,
+  battant:{vW:137,vH:137}, guillotine:{vW:140,vH:82}, coulissant:{vW:82,vH:150}, fixe:{vW:90,vH:90},
+  parclose_code:'9904-19419', meneau_code:'9921-19404',
+  // Renfort acier (NAFS) — codes/seuils À VALIDER avec Fusion. seuil = dimension hors-tout au-delà de laquelle on renforce ; retrait = mm de moins que le profilé PVC (insertion en chambre).
+  renfort:{ code_cadre:'RENF-AC-CADRE', code_meneau:'RENF-AC-MENEAU', seuil_L:900, seuil_H:1500, retrait:50 },
+};
+/* PROFILS — codes de profilés RÉELS extraits du bon de travail Fusion #015980 (table éditable, proposition #17).
+   Attribution par famille. Casiers = numérotation simulée (logique de bac à confirmer avec Fusion). */
+const PROFILS = {
+  cadre:    { battant:'9800-21383', coulissant:'9920I-20582', guillotine:'9920I-20582', fixe:'9920I-20582' },
+  volet:    { battant:'9601XI-21343', coulissant:'9922-19298', guillotine:'9922-19298', default:'9922-19298' },
+  volet_rencontre:'9923-19299',   // rail de rencontre (meeting rail) — variante à placer par arête
+  volet_poignee:'9925-19301',     // rail de poignée — variante à placer par arête
+  parclose: { battant:'9604XB-19628', default:'9904-19419' },
+  parclose_rencontre:'9905-19420',
+  meneau:'9921-19404',            // MENEAU COULISSANT & GUILLOTINE
+  arret_volet:'9627-19900',
+  moulure_l:'9929-19403',
+  adapt_moust:'9931-19405',
+  soufflage:'9876-13100',
+  moust_barre:'BAR716BW',
+  moust_barre_levre:'BAR38LIBW',
+  moust_toile:'MF-6-16',
+};
+const VERRE = {
+  double:{tint:{clair:0xeaf2f5,bronze:0x6b5235,gray:0x53595e},U:1.45,ER:29,kg_m2:18,ep:'22,225 mm'},
+  triple:{tint:{clair:0xe9f2f4,bronze:0x6b5235,gray:0x53595e},U:1.05,ER:40,kg_m2:26,ep:'~36 mm'},
+};
+const COLORS = {
+  white:{c:0xf5f6f4,r:.35,fr:'Blanc',en:'White'}, black:{c:0x1c1f22,r:.4,fr:'Noir',en:'Black'},
+  anthracite:{c:0x3b4046,r:.5,fr:'Anthracite',en:'Anthracite'},
+  brown:{c:0x5a4636,r:.55,fr:'Commercial brun',en:'Commercial brown'}, oak:{c:0xb07a45,r:.6,fr:'Chêne',en:'Oak'},
+  greyoak:{c:0x8d8478,r:.7,fr:'Chêne gris',en:'Grey oak'},
+};
+const SOUF_D = {'4 9/16':0.116,'6 1/4':0.159,'6 9/16':0.167};
+
+/* ===== UNITÉS — pivot mm ===== */
+function reduceFrac(n,d){ while(n%2===0&&d%2===0&&n){n/=2;d/=2;} return [n,d]; }
+function mmToFrac(mm){ const six=Math.round(mm/25.4*16); const w=Math.floor(six/16); let[n,d]=reduceFrac(six%16,16); return n===0?`${w}″`:`${w} ${n}/${d}″`; }
+function mmToDec(mm){ return (mm/25.4).toFixed(2)+'″'; }
+function mmToFtIn(mm){ const ti=mm/25.4,ft=Math.floor(ti/12); return `${ft}′ ${mmToFrac((ti-ft*12)*25.4)}`; }
+function fmt(mm,u){ u=u||state().unit; return u==='mm'?`${Math.round(mm)} mm`:u==='frac'?mmToFrac(mm):u==='dec'?mmToDec(mm):mmToFtIn(mm); }
+
+/* ===== ÉTAT ===== */
+const ui=id=>document.getElementById(id);
+function state(){
+  const [cadreCode,cadreNom]=ui('cadre').value.split('|');
+  const [vType,vTint]=ui('verre').value.split('|'); const fam=ui('family').value;
+  return { family:fam, W:+ui('w').value, H:+ui('h').value, unit:ui('unit').value,
+    cadreCode, cadreNom, vType, vTint, aspect:ui('aspect')?.value||'clair', colExt:ui('colExt').value, colInt:ui('colInt').value,
+    moulure:ui('moulure').value, soufflage:ui('soufflage').value, grilles:ui('grilles')?.value||'none', imposte:ui('imposte')?.value||'none', imposteH:+(ui('imposteH')?.value||350), imposteW:+(ui('imposteW')?.value||1),
+    quinc:ui('quinc').value, coupe:ui('coupe').value, moust:ui('moust').checked, vantaux:+(ui('vantaux')?.value||1),
+    glassW:+(ui('glassW')?.value||0.62), glassH:+(ui('glassH')?.value||0.46),
+    sections:+(ui('sections')?.value||FAMILIES[fam].sections), ouvrant:ui('ouvrant')?.value||'D',
+    openSecs:(()=>{ const cbs=document.querySelectorAll('#openSecs .osc'); return cbs.length?[...cbs].map(c=>c.checked):null; })(),
+    panneau:ui('panneau')?.value||'mi', sidelights:ui('sidelights')?.value||'none' };
+}
+
+/* ===== COUCHE 4 — COMPOSANTS DÉRIVÉS ===== */
+function accessoires(s){
+  const a=[],R=Math.round,P=2*(s.W+s.H);
+  a.push({grp:'Accessoire',code:'CF-'+s.coupe,desc:`Coupe-froid ${s.coupe}`,lng:R(P),qte:1});
+  if(FAMILIES[s.family].hw!=='aucune') a.push({grp:'Accessoire',code:'QUINC',desc:s.quinc+' · '+FAMILIES[s.family].hw,lng:0,qte:1});   // pas de quincaillerie sur un fixe
+  if(s.moulure!=='none') a.push({grp:'Moulure',code:'MOUL-'+s.moulure,desc:s.moulure==='j'?'J-trim vinyle':'Moulure brique '+s.moulure+'″',lng:R(P),qte:1});
+  // Soufflage intérieur — cadre 4 pièces (2×L + 2×H), code réel 9876-13100
+  if(s.soufflage!=='none'){ const cl=COLORS[s.colInt].fr;
+    a.push({grp:'Soufflage',code:'9876-13100',desc:`(L) Soufflage ${s.soufflage} (${cl})`,lng:R(s.W),qte:2});
+    a.push({grp:'Soufflage',code:'9876-13100',desc:`(H) Soufflage ${s.soufflage} (${cl})`,lng:R(s.H),qte:2});
+  }
+  if(s.grilles&&s.grilles!=='none'){ const lbl={colonial:'Carrés (colonial)',prairie:'Prairie',croix:'Croix centrale'}[s.grilles]; a.push({grp:'Croisillons',code:'GBG-'+s.grilles,desc:'Croisillons '+lbl+' (petits-bois)',lng:0,qte:1}); }
+  return a;
+}
+function derive(s){
+  const fam=FAMILIES[s.family], weld=REGLES.perte_soudure_mm, R=Math.round, comps=[], thermos=[];
+  const voletCode=PROFILS.volet[s.family]||PROFILS.volet.default, parCode=PROFILS.parclose[s.family]||PROFILS.parclose.default;
+  comps.push({grp:'Cadre',code:s.cadreCode,desc:`(L) ${fam.door?'Cadre porte':s.cadreNom}`,lng:R(s.W+weld),qte:2});
+  comps.push({grp:'Cadre',code:s.cadreCode,desc:`(H) ${fam.door?'Cadre porte':s.cadreNom}`,lng:R(s.H+weld),qte:2});
+  function sash(gw,gh,tag,glass=true,oper=fam.operable){
+    if(oper){ comps.push({grp:'Volet',code:voletCode,desc:`(L) Volet ${tag}`,lng:R(gw+50),qte:2}); comps.push({grp:'Volet',code:voletCode,desc:`(H) Volet ${tag}`,lng:R(gh+50),qte:2}); }
+    if(glass){ comps.push({grp:'Parclose',code:parCode,desc:`(L) Parclose ${tag}`,lng:R(gw),qte:2}); comps.push({grp:'Parclose',code:parCode,desc:`(H) Parclose ${tag}`,lng:R(gh),qte:2}); thermos.push({desc:tag,w:R(gw),h:R(gh),qte:1}); }
+  }
+  if(fam.door){
+    if(s.family==='porte_patio'){ const n=s.sections, sw=s.W/n; for(let i=0;i<n;i++) sash(sw-90, s.H-150, `vantail ${i+1}`, true, !s.openSecs||s.openSecs[i]); for(let i=0;i<n-1;i++) comps.push({grp:'Meneau',code:REGLES.meneau_code,desc:'Meneau patio',lng:R(s.H-150),qte:1}); }
+    else { // porte battante (entrée ou intérieure) — PAS de volet, le verre est tenu par parclose dans le battant
+      comps.push({grp:'Battant',code:'PORTE-LEAF',desc:'Battant de porte',lng:R(2*(s.W+s.H)),qte:1});
+      const solid = s.panneau==='plein' || s.family==='porte_int';   // porte intérieure = toujours pleine (comme la 3D)
+      if(solid) comps.push({grp:'Panneau',code:'PAN-PLEIN',desc:'Panneau plein isolé',lng:0,qte:1});
+      else { const gw=s.W-200, gh=s.panneau==='vitre'?s.H-260:R(s.H*0.5); sash(gw,gh,'vitre porte',true,false); }
+    }
+    const cnt=s.sidelights==='deux'?2:(s.sidelights==='none'?0:1);
+    for(let i=0;i<cnt;i++) sash(300-120, s.H-150, `verre latéral ${i+1}`, true, false);   // verre latéral fixe — pas de volet
+  } else {
+    const d=REGLES[s.family];
+    if(s.family==='guillotine'){ const sh=s.H/2; sash(s.W-d.vW,sh-d.vH,'vantail haut'); sash(s.W-d.vW,sh-d.vH,'vantail bas'); comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau guillotine',lng:R(s.W-150),qte:1}); comps.push(...slideHardware(s)); }
+    else if(s.family==='coulissant'){ const n=s.sections,sw=s.W/n; for(let i=0;i<n;i++) sash(sw-d.vW,s.H-d.vH,`section ${i+1}`, true, !s.openSecs||s.openSecs[i]); for(let i=0;i<n-1;i++) comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau coulissant',lng:R(s.H-150),qte:1}); comps.push(...slideHardware(s)); }
+    else if(s.family==='battant'&&s.vantaux===2){ const sw=s.W/2; sash(sw-d.vW,s.H-d.vH,'vantail G'); sash(sw-d.vW,s.H-d.vH,'vantail D'); comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau central (battant 2 vantaux)',lng:R(s.H-150),qte:1}); }
+    else sash(s.W-d.vW,s.H-d.vH,'1 section');
+  }
+  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH, iw=R(s.W*s.imposteW);   // imposte fixe au-dessus
+    comps.push({grp:'Cadre',code:s.cadreCode,desc:'(L) Cadre imposte',lng:R(iw+weld),qte:2});
+    comps.push({grp:'Cadre',code:s.cadreCode,desc:'(H) Cadre imposte',lng:R(ih+weld),qte:2});
+    comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau de jumelage (imposte)',lng:R(iw),qte:1});
+    comps.push({grp:'Parclose',code:parCode,desc:'(L) Parclose imposte',lng:R(iw-100),qte:2});
+    comps.push({grp:'Parclose',code:parCode,desc:'(H) Parclose imposte',lng:R(ih-100),qte:2});
+    thermos.push({desc:'imposte',w:R(iw-100),h:R(ih-100),qte:1});
+  }
+  return { comps:[...comps,...renforts(s,comps),...moustiquaire(s),...accessoires(s)], thermos };
+}
+function renforts(s,comps){
+  const R=Math.round, r=REGLES.renfort, out=[];
+  // Cadre — montants verticaux (acier inséré dans la chambre du PVC) si hauteur > seuil
+  if(s.H>r.seuil_H) out.push({grp:'Renfort acier',code:r.code_cadre,desc:'(H) Renfort acier — montant de cadre',lng:R(s.H-r.retrait),qte:2});
+  // Cadre — traverses haut/bas si largeur > seuil
+  if(s.W>r.seuil_L) out.push({grp:'Renfort acier',code:r.code_cadre,desc:'(L) Renfort acier — traverse de cadre',lng:R(s.W-r.retrait),qte:2});
+  // Meneaux : élément structural central, toujours renforcé (1 acier par meneau)
+  comps.filter(c=>c.code===PROFILS.meneau).forEach(m=> out.push({grp:'Renfort acier',code:r.code_meneau,desc:'Renfort acier — '+m.desc.toLowerCase(),lng:m.lng,qte:m.qte}));
+  return out;
+}
+function moustiquaire(s){
+  // Cadre de moustiquaire par section ouvrante : 2 barres (L) + 2 barres (H) + 1 toile.
+  if(!s.moust) return [];
+  const fam=FAMILIES[s.family], R=Math.round, out=[];
+  let screens=[];
+  if(s.family==='guillotine') screens=[{w:s.W-90,h:s.H/2-80}];                    // 1 vantail mobile
+  else if(s.family==='coulissant'||s.family==='porte_patio'){ const sw=s.W/s.sections; screens=[{w:R(sw-80),h:s.H-90}]; } // 1 section ouvrante
+  else if(s.family==='battant') screens=[{w:s.W-90,h:s.H-90}];                    // battant (les portes battantes n'ont pas de moustiquaire)
+  screens.forEach((sc,i)=>{ const tag=screens.length>1?` ${i+1}`:'';
+    out.push({grp:'Moustiquaire',code:PROFILS.moust_barre,desc:`(L) Barre moustiquaire 7/16${tag}`,lng:R(sc.w),qte:2});
+    out.push({grp:'Moustiquaire',code:PROFILS.moust_barre,desc:`(H) Barre moustiquaire 7/16${tag}`,lng:R(sc.h),qte:2});
+    out.push({grp:'Moustiquaire',code:PROFILS.moust_toile,desc:`Toile fibre de verre${tag} (${R(sc.w)}×${R(sc.h)})`,lng:0,qte:1});
+  });
+  return out;
+}
+function slideHardware(s){ // profilés associés au mécanisme coulissant/guillotine (codes réels #015980)
+  const R=Math.round, L=R((s.family==='guillotine'?s.W:s.H)-150), out=[
+    {grp:'Meneau',code:PROFILS.arret_volet,desc:'Arrêt de volet',lng:L,qte:1},
+    {grp:'Meneau',code:PROFILS.moulure_l,desc:'Moulure en L coul./guill.',lng:L,qte:1},
+  ];
+  if(s.moust) out.push({grp:'Meneau',code:PROFILS.adapt_moust,desc:'Adaptateur de moustiquaire',lng:L,qte:1});
+  return out;
+}
+
+/* ===== VALIDATIONS ===== */
+function validate(s,dv){
+  const fam=FAMILIES[s.family], V=VERRE[s.vType], out=[];
+  if(fam.door) out.push({k:'Egress',v:'Non applicable (porte)',b:'na',t:'N/A'});
+  else if(fam.operable){
+    let cw,ch; if(s.family==='battant'){cw=s.W-160;ch=s.H-160;} else if(s.family==='guillotine'){cw=s.W-160;ch=s.H/2-120;} else {cw=s.W/s.sections-120;ch=s.H-160;}
+    const area=cw*ch/1e6,mn=Math.min(cw,ch),ok=area>=0.35&&mn>=380;
+    out.push({k:'Egress (sortie de secours)',v:`${area.toFixed(2)} m² · min ${Math.round(mn)} mm`,b:ok?'ok':'warn',t:ok?'Conforme':'Sous le seuil'});
+  } else out.push({k:'Egress',v:'Non applicable (fixe)',b:'na',t:'N/A'});
+  const hasGlass=dv.thermos.length>0;
+  if(hasGlass){ const es=V.ER>=34&&V.U<=1.22; out.push({k:'Energy Star',v:`U ≈ ${V.U.toFixed(2)} · ER ≈ ${V.ER}`,b:es?'ok':'bad',t:es?'Qualifié':'Non qualifié'}); }
+  else out.push({k:'Energy Star',v:'Aucun vitrage',b:'na',t:'N/A'});
+  const renfQty=dv.comps.filter(c=>c.grp==='Renfort acier').reduce((a,c)=>a+c.qte,0); out.push({k:'NAFS / renfort acier',v:renfQty?`${renfQty} pièce(s) d'acier · voir onglet Découpe`:'Standard',b:renfQty?'warn':'ok',t:renfQty?'Renfort acier requis':'Sans renfort'});
+  const big=dv.thermos.some(t=>Math.max(t.w,t.h)>=1000||(t.w*t.h/1e6)>0.84)||fam.door; out.push({k:'Verre trempé (sécurité)',v:fam.door?'Porte vitrée':(big?'Grand panneau':'Standard'),b:big?'warn':'na',t:big?'Trempé recommandé':'Non requis'});
+  const ga=dv.thermos.reduce((a,t)=>a+t.w*t.h*t.qte,0)/1e6, wkg=ga*V.kg_m2+(2*s.W+2*s.H)/1000*1.8;
+  out.push({k:'Poids estimé',v:`${wkg.toFixed(1)} kg`,b:'na',t:'expédition'});
+  return out;
+}
+
+/* ===== FICHE BILINGUE ===== */
+function fiche(s){
+  const f=FAMILIES[s.family],V=VERRE[s.vType],ce=COLORS[s.colExt],ci=COLORS[s.colInt],dim=`${fmt(s.W)} × ${fmt(s.H)}`;
+  const door=f.door, extra=door?(s.family==='porte_patio'?`SECTIONS : ${s.sections}`:`PANNEAU : ${({plein:'Plein',mi:'Mi-vitré',vitre:'Pleine vitre',deco:'Décoratif'})[s.panneau]}\nVERRES LATÉRAUX : ${({none:'Aucun',gauche:'Gauche',droite:'Droite',deux:'Deux côtés'})[s.sidelights]}`):'';
+  const GL={colonial:'Carrés (colonial)',prairie:'Prairie',croix:'Croix centrale'}, GLe={colonial:'Colonial grilles',prairie:'Prairie',croix:'Center cross'};
+  const optFr=(s.grilles&&s.grilles!=='none'?'\nCROISILLONS : '+GL[s.grilles]:'')+(s.aspect==='depoli'?'\nVERRE : Dépoli / givré':'')+(s.imposte&&s.imposte!=='none'?'\nIMPOSTE : Fixe '+s.imposteH+' mm (au-dessus)':'')+(s.family==='battant'&&s.vantaux===2?'\nVANTAUX : 2 (à la française)':'');
+  const optEn=(s.grilles&&s.grilles!=='none'?'\nGRILLES : '+GLe[s.grilles]:'')+(s.aspect==='depoli'?'\nGLASS : Frosted':'')+(s.imposte&&s.imposte!=='none'?'\nTRANSOM : Fixed '+s.imposteH+' mm (above)':'')+(s.family==='battant'&&s.vantaux===2?'\nLEAVES : 2 (French)':'');
+  const fr=`PRODUIT : ${f.code}${door?'':' / '+s.sections+' section(s)'}
+CADRE   : ${door?'Cadre de porte':s.cadreNom} (${dim})
+${extra?extra+'\n':''}VERRE   : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir (${V.ep})
+COULEUR : Ext. ${ce.fr}${s.colExt!==s.colInt?` / Int. ${ci.fr} (bicolore)`:''}
+MOULURE : ${s.moulure==='none'?'Aucune':s.moulure==='j'?'J-trim':'Brique '+s.moulure+'″'}
+SOUFFLAGE INT. : ${s.soufflage==='none'?'Aucun':s.soufflage+'″'}${optFr}
+QUINCAILLERIE : ${s.quinc} · ${f.hw}
+COUPE-FROID : ${s.coupe}${s.moust?'\nMOUSTIQUAIRE : Fibre de verre':''}`;
+  const en=`PRODUCT : ${f.en}${door?'':' / '+s.sections+' section(s)'}
+FRAME   : ${door?'Door frame':s.cadreNom} (${dim})
+GLASS   : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Black (${V.ep})
+COLOR   : Ext. ${ce.en}${s.colExt!==s.colInt?` / Int. ${ci.en} (two-tone)`:''}
+BRICKMOULD : ${s.moulure==='none'?'None':s.moulure==='j'?'J-trim':'Brick '+s.moulure+'″'}
+JAMB EXT. : ${s.soufflage==='none'?'None':s.soufflage+'″'}${optEn}
+HARDWARE : ${s.quinc} · ${f.hw}
+WEATHERSTRIP : ${s.coupe}${s.moust?'\nSCREEN : Fiberglass':''}`;
+  return {fr,en};
+}
+
+/* ===== SCÈNE 3D ===== */
+const view=ui('view3d');
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15; renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+view.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xffffff);
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;
+const camera=new THREE.PerspectiveCamera(45,1,0.05,100); camera.position.set(2,1.3,3.2);
+const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.target.set(0,.8,0);
+const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(3,5,4); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=4;key.shadow.camera.bottom=-1;key.shadow.bias=-0.0004; scene.add(key); scene.add(new THREE.AmbientLight(0xffffff,.45));
+const fill=new THREE.DirectionalLight(0xffffff,.75); fill.position.set(-4,3,-5); scene.add(fill);   // appoint arrière (vue intérieure)
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0xd7dce3,roughness:1})); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(40,20),new THREE.MeshStandardMaterial({color:0xeaedf1,roughness:1})); wall.position.set(0,10,-0.22); wall.receiveShadow=true; scene.add(wall);
+const root=new THREE.Group(); scene.add(root);
+let CUR=root, SASHES=[], GRILLE='none', GLW=0.62, GLH=0.46;   // CUR=groupe courant ; SASHES=ouvrants ; GRILLE=croisillons ; GLW/GLH=fractions vitrage porte
+
+const FW=0.06,DEPTH=0.10,GT=0.018,MM=0.001;
+function frameMat(col){ const c=COLORS[col]||COLORS.white; return new THREE.MeshPhysicalMaterial({color:c.c,roughness:c.r,metalness:0,clearcoat:.5,clearcoatRoughness:.3}); }
+function glassMat(s){ const g=VERRE[s.vType].tint[s.vTint];
+  if(s.aspect==='depoli') return new THREE.MeshPhysicalMaterial({color:0xeef2f3,roughness:.85,transmission:.65,thickness:.04,ior:1.4,transparent:true,opacity:.9,envMapIntensity:.6}); // dépoli / givré
+  return new THREE.MeshPhysicalMaterial({color:g,roughness:.06,transmission:.9,thickness:.02,ior:1.5,transparent:true,envMapIntensity:.55,clearcoat:.5,clearcoatRoughness:.12,attenuationColor:g,attenuationDistance:1.2}); }
+const steelMat=new THREE.MeshStandardMaterial({color:0x9aa0a6,roughness:.25,metalness:1});
+const whiteMat=new THREE.MeshStandardMaterial({color:0xf0f0f0,roughness:.5,metalness:.1});
+const screenMat=new THREE.MeshStandardMaterial({color:0x6b7077,roughness:.95,transparent:true,opacity:.5});   // moustiquaire
+const grooveMat=new THREE.MeshStandardMaterial({color:0x20242a,roughness:.6,metalness:.3});                   // rainure porte
+const blackHw=new THREE.MeshStandardMaterial({color:0x17191c,roughness:.4,metalness:.5});                     // poignée noire moderne
+let HM=steelMat, FMext, FMint, GM;
+function box(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
+function frameRect(cx,cy,w,h,m){
+  box(w,FW,DEPTH,m,cx,cy+h/2-FW/2,0); box(w,FW,DEPTH,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,DEPTH,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,DEPTH,m,cx+w/2-FW/2,cy,0);
+  // baguette de vitrage (relief autour de la vitre, côté intérieur) — aspect profilé PVC
+  const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
+  box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
+}
+function lever(x,y,z,m){ m=m||HM; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+0.012); }   // poignée bec-de-cane
+function grilleBars(w,h,x,y,z){ if(GRILLE==='none') return; const bw=0.016, zz=z+GT/2+0.005, m=FMext;
+  const v=bx=>box(bw,h,0.01,m,x+bx,y,zz), hb=by=>box(w,bw,0.01,m,x,y+by,zz);
+  if(GRILLE==='colonial'){ v(-w/6);v(w/6); hb(-h/6);hb(h/6); }          // 3×3 carreaux
+  else if(GRILLE==='prairie'){ v(-w*0.32);v(w*0.32); hb(-h*0.32);hb(h*0.32); }  // bordure prairie
+  else if(GRILLE==='croix'){ v(0); hb(0); }                            // croix centrale
+}
+function glassPane(w,h,x,y,z){ box(w,h,GT,GM,x,y,z); grilleBars(w,h,x,y,z); }
+function opening(cx,cy,w,h){ frameRect(cx,cy,w,h,FMext); glassPane(w-2*FW,h-2*FW,cx,cy,0); }
+function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); while(root.children.length) root.remove(root.children[0]); SASHES=[]; CUR=root; }
+/* Crée un ouvrant animable : build() construit la géométrie dans un sous-groupe positionné en (cx,cy,cz) ;
+   anim = {open:{x,y,rot}} donne l'état ouvert (interpolé depuis base = position fermée). */
+function addSash(cx,cy,cz,build,anim){
+  const g=new THREE.Group(); g.position.set(cx,cy,cz); const prev=CUR; CUR=g; build(); CUR=prev; root.add(g);
+  SASHES.push(Object.assign({g,base:{x:cx,y:cy,rot:0},opened:false,p:0},anim));
+}
+
+function doorFrame(cx,cy,w,h,st){ const m=FMext,d=DEPTH*0.82;   // montants + traverses
+  box(w,st,d,m,cx,cy+h/2-st/2,0); box(w,st,d,m,cx,cy-h/2+st/2,0); box(st,h-2*st,d,m,cx-w/2+st/2,cy,0); box(st,h-2*st,d,m,cx+w/2-st/2,cy,0); }
+function slabAround(cx,cy,w,h,gx,gy,gw,gh){ const m=FMext,d=DEPTH*0.7;   // remplit le plein AUTOUR du trou vitré (4 bandes) → pas de vide
+  const top=cy+h/2,bot=cy-h/2,lft=cx-w/2,rgt=cx+w/2, gt=gy+gh/2,gb=gy-gh/2,gl=gx-gw/2,gr=gx+gw/2;
+  if(top-gt>0.002) box(w,top-gt,d,m,cx,(top+gt)/2,0);
+  if(gb-bot>0.002) box(w,gb-bot,d,m,cx,(gb+bot)/2,0);
+  if(gl-lft>0.002) box(gl-lft,gt-gb,d,m,(lft+gl)/2,gy,0);
+  if(rgt-gr>0.002) box(rgt-gr,gt-gb,d,m,(gr+rgt)/2,gy,0); }
+function panelGlass(cx,cy,w,h){ const m=FMext,bw=0.045,d=0.03;   // baguettes + verre dans le trou
+  box(w,bw,d,m,cx,cy+h/2-bw/2,0); box(w,bw,d,m,cx,cy-h/2+bw/2,0); box(bw,h-2*bw,d,m,cx-w/2+bw/2,cy,0); box(bw,h-2*bw,d,m,cx+w/2-bw/2,cy,0);
+  glassPane(w-2*bw,h-2*bw,cx,cy,0); }
+function moldingRect(cx,cy,w,h){ const m=FMext,bw=0.05,zf=DEPTH*0.36;   // moulure en relief (panneau plein)
+  box(w,bw,0.016,m,cx,cy+h/2-bw/2,zf); box(w,bw,0.016,m,cx,cy-h/2+bw/2,zf); box(bw,h-2*bw,0.016,m,cx-w/2+bw/2,cy,zf); box(bw,h-2*bw,0.016,m,cx+w/2-bw/2,cy,zf); }
+function leaf(cx,cy,w,h,pan,fam){
+  if(fam==='porte_int'){ box(w,h,DEPTH*0.82,FMext,cx,cy,0); const gz=DEPTH*0.42; box(w*0.9,0.013,0.012,grooveMat,cx,cy+0.05,gz); box(w*0.9,0.013,0.012,grooveMat,cx,cy-0.01,gz); return; }   // porte pleine + 2 rainures
+  const st=Math.min(0.11,w*0.18); doorFrame(cx,cy,w,h,st); const iw=w-2*st, ih=h-2*st, top=cy+ih/2, bot=cy-ih/2;
+  if(pan==='plein'){ box(iw,ih,DEPTH*0.7,FMext,cx,cy,0); moldingRect(cx,cy+ih*0.24,iw*0.78,ih*0.4); moldingRect(cx,cy-ih*0.24,iw*0.78,ih*0.4); return; }
+  const gw=Math.min(iw*0.96, iw*GLW), gh=Math.min(ih*0.96, ih*GLH);   // vitrage dimensionnable
+  const gy=(pan==='vitre')?cy:(top - gh/2 - ih*0.05);                 // vitre centrée, sinon vers le haut
+  slabAround(cx,cy,iw,ih,cx,gy,gw,gh);   // plein tout autour
+  panelGlass(cx,gy,gw,gh);
+  if(pan!=='vitre'){ const sb=gy-gh/2; if(sb-bot>0.05) moldingRect(cx,(bot+sb)/2,iw*0.78,(sb-bot)*0.72); }   // panneau plein bas mouluré
+}
+function brickMould(s){ if(s.moulure==='none')return; const W=s.W*MM,H=s.H*MM,cy=H/2,bw=s.moulure==='j'?0.02:(+s.moulure)*0.0254,z=DEPTH/2+0.004,t=0.018;
+  box(W+2*bw,bw,t,FMext,0,cy+H/2+bw/2,z); box(W+2*bw,bw,t,FMext,0,cy-H/2-bw/2,z); box(bw,H,t,FMext,-W/2-bw/2,cy,z); box(bw,H,t,FMext,W/2+bw/2,cy,z); }
+function soufflageInt(s){ if(s.soufflage==='none')return; const W=s.W*MM,H=s.H*MM,cy=H/2,d=SOUF_D[s.soufflage]||0.12,zc=-DEPTH/2-d/2;
+  box(W,FW,d,FMint,0,cy+H/2-FW/2,zc); box(W,FW,d,FMint,0,cy-H/2+FW/2,zc); box(FW,H-2*FW,d,FMint,-W/2+FW/2,cy,zc); box(FW,H-2*FW,d,FMint,W/2-FW/2,cy,zc); }
+
+function build3D(s){
+  clearRoot(); FMext=frameMat(s.colExt); FMint=frameMat(s.colInt); GM=glassMat(s); HM=s.quinc.startsWith('Stainless')?steelMat:whiteMat;
+  const fam=FAMILIES[s.family], W=s.W*MM, H=s.H*MM, cy=H/2, openRight=(s.ouvrant!=='G'); GRILLE=s.grilles||'none'; GLW=s.glassW||0.62; GLH=s.glassH||0.46;
+  if(fam.door){
+    const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux';
+    const total=W+(hasL?sl:0)+(hasR?sl:0); let x=-total/2;
+    frameRect(0,cy,total+2*FW,H+FW,FMext);   // chambranle / cadre de porte
+    if(hasL){ opening(x+sl/2,cy,sl,H); x+=sl; }
+    if(s.family==='porte_patio'){ const n=s.sections,sw=W/n;
+      for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(i<n/2)?1:-1;
+        if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
+        else opening(lx,cy,sw+FW,H); }
+    } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
+      addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px; leaf(lcx,0,W,H,s.panneau,s.family); lever(lcx+(hingeR?-W/2+0.06:W/2-0.06),0,DEPTH/2,s.family==='porte_int'?blackHw:HM); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z)
+    x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
+  } else if(s.family==='guillotine'){
+    opening(0,cy+H/4,W,H/2+FW);
+    addSash(0,cy-H/4,0.02,()=>{ frameRect(0,0,W,H/2+FW,FMext); glassPane(W-2*FW,H/2-FW,0,0,0); box(0.18,0.025,0.05,HM,0,-(H/4)+0.08,DEPTH/2); },{kind:'slide',open:{x:0,y:cy-H/4+H*0.32,rot:0}});
+    if(s.moust) box(W-2*FW,H/2-FW,0.004,screenMat,0,cy-H/4,DEPTH/2+0.015);   // moustiquaire visible (moitié basse)
+  } else if(s.family==='coulissant'){ const n=s.sections,sw=W/n;
+    for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(i<n/2)?1:-1;
+      if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
+      else opening(lx,cy,sw+FW,H); }
+  } else if(s.family==='battant'){
+    frameRect(0,cy,W,H,FMext);   // dormant fixe
+    const iw=W-2*FW, ih=H-2*FW;
+    const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2); addSash(px,cy,0.01,()=>{ const lcx=scx-px; frameRect(lcx,0,sw,ih,FMext); glassPane(sw-2*FW,ih-2*FW,lcx,0,0); lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.3:-1.3}}); };   // pivote vers l'EXTÉRIEUR
+    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
+    else bsash(0,iw,openRight);
+  } else opening(0,cy,W,H);   // fixe
+  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM, iw=W*s.imposteW; box(iw,FW,DEPTH,FMext,0,H+FW/2,0); opening(0,H+FW+ih/2,iw,ih); }   // imposte fixe au-dessus (largeur réglable)
+  brickMould(s); soufflageInt(s);
+  const topY=(s.imposte&&s.imposte!=='none')?(H+FW+s.imposteH*MM):H; controls.target.set(0,topY/2,0);
+}
+
+/* ===== VUE 2D ===== */
+function draw2D(s){
+  const fam=FAMILIES[s.family], tot=s.W,h=s.H,sc=Math.min(460/tot,150/h),w=tot*sc,hh=h*sc,ox=70,oy=24,bl='#4ea1ff',mu='#7f8a98';
+  let g=`<svg width="600" height="220" viewBox="0 0 600 220"><rect x="${ox}" y="${oy}" width="${w}" height="${hh}" fill="none" stroke="#cdd6e0" stroke-width="2"/>`;
+  const vline=x=>`<line x1="${x}" y1="${oy}" x2="${x}" y2="${oy+hh}" stroke="${mu}" stroke-width="1.5"/>`;
+  if((s.family==='coulissant'||s.family==='porte_patio')){ const n=s.sections; for(let i=1;i<n;i++) g+=vline(ox+w/n*i); }
+  if(s.family==='guillotine'){ g+=`<line x1="${ox}" y1="${oy+hh/2}" x2="${ox+w}" y2="${oy+hh/2}" stroke="${mu}" stroke-width="1.5"/>`; }
+  if(fam.door && s.family!=='porte_patio' && s.panneau==='mi'){ g+=`<line x1="${ox}" y1="${oy+hh*0.5}" x2="${ox+w}" y2="${oy+hh*0.5}" stroke="${mu}"/>`; }
+  g+=`<line x1="${ox}" y1="${oy+hh+20}" x2="${ox+w}" y2="${oy+hh+20}" stroke="${bl}"/><text x="${ox+w/2}" y="${oy+hh+38}" fill="${bl}" font-size="13" text-anchor="middle">${fmt(s.W)}</text>`;
+  g+=`<line x1="${ox-20}" y1="${oy}" x2="${ox-20}" y2="${oy+hh}" stroke="${bl}"/><text x="${ox-26}" y="${oy+hh/2}" fill="${bl}" font-size="13" text-anchor="middle" transform="rotate(-90 ${ox-26} ${oy+hh/2})">${fmt(s.H)}</text>`;
+  g+=`<text x="${ox}" y="14" fill="${mu}" font-size="11">${fam.code} — vue extérieure</text></svg>`; return g;
+}
+
+/* ===== COMMANDE (multi-produits) ===== */
+let ORDER=[]; const ORDER_NO='031735';
+function snapshot(){ return {...state()}; }
+function orderItems(){ return ORDER.length?ORDER:[{s:snapshot(),qty:1}]; }
+function addToOrder(){ const q=Math.max(1,Math.round(+ui('itemQty').value||1)); ORDER.push({s:snapshot(),qty:q}); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
+function removeItem(i){ ORDER.splice(i,1); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
+function renderOrderList(){
+  const el=ui('orderList'); if(!el) return;
+  if(!ORDER.length){ el.innerHTML='<span class="pill">Aucun produit ajouté — les onglets affichent le produit en cours comme item 1.</span>'; return; }
+  el.innerHTML=ORDER.map((it,i)=>`<span class="chip">#${i+1} ${FAMILIES[it.s.family].fr} ${Math.round(it.s.W)}×${Math.round(it.s.H)}${it.qty>1?' ×'+it.qty:''}<b data-i="${i}">×</b></span>`).join('')
+    +`<span class="chip clr" data-clr="1">Vider</span>`;
+}
+
+/* ===== BONS DE TRAVAIL (calqué sur le #015980 de Fusion) ===== */
+const POSTE_LBL={scie:'Scie',poincon:'Poinçon / machinage',soudage:'Soudage',sousens:'Sous-ensemble',assemblage:'Assemblage',achat:'Achat sur commande'};
+const CASIER={Cadre:'CaseC',Volet:'CaseV',Parclose:'Pare',Meneau:'MenoC','Renfort acier':'Renf',Soufflage:'Souf',Moustiquaire:'Moust'};
+function band(postes,sel){ return `<span class="poste-band">`+postes.map(p=>`<span class="poste ${p}${sel&&sel!=='all'&&sel!==p?' dim':''}">${POSTE_LBL[p]}</span>`).join('')+`</span>`; }
+function btTable(rows,grp){ let i=0; const tr=rows.map(c=>{ i++; const cas=(CASIER[grp]||'Case')+' '+String(i).padStart(2,'0');
+    return `<tr><td>${c.item||1}</td><td>${c.code}</td><td>${c.desc}</td><td class="cas">${cas}</td><td class="num">${c.lng?Math.round(c.lng):'—'}</td><td class="num">${c.qte}</td></tr>`; }).join('');
+  return `<table class="bt-tbl"><thead><tr><th>Item</th><th>Code</th><th>Désignation</th><th>Casier</th><th>Long. TIGER (mm)</th><th>Qté</th></tr></thead><tbody>${tr}</tbody></table>`; }
+function collect(items,grp,filterFn){ const out=[]; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.comps.filter(filterFn||(c=>c.grp===grp)).forEach(c=> out.push({...c,item:idx+1,qte:c.qte*it.qty})); }); return out; }
+let BT_POSTE='all';
+const POSTES_ALL=['scie','poincon','soudage','sousens','assemblage','achat'];
+const STATIONS=[1,2,3,4,5,6];
+let POSTE_ASSIGN={};   // assignations mémorisées, clé `${poste}|${section}` → n° de station (1–6)
+function renderBons(){
+  const items=orderItems(), nItems=items.length, totQ=items.reduce((a,it)=>a+it.qty,0), sel=BT_POSTE;
+  const stationSel=(grp)=>{ if(sel==='all') return ''; const key=sel+'|'+grp, cur=POSTE_ASSIGN[key]||'';
+    return `<select class="stsel" data-key="${key}" title="Poste (1–6) qui exécute cette tâche">`+
+      `<option value="">Poste n°…</option>`+STATIONS.map(n=>`<option value="${n}"${cur==n?' selected':''}>Poste ${n}</option>`).join('')+`</select>`; };
+  const secDefs=[
+    {grp:'Cadre',n:'①',postes:['scie','poincon','soudage']},
+    {grp:'Volet',n:'②',postes:['scie','poincon','soudage']},
+    {grp:'Parclose',n:'③',postes:['scie','poincon']},
+    {grp:'Meneau',n:'④',postes:['scie','poincon','sousens']},
+    {grp:'Renfort acier',n:'⑤',postes:['scie','poincon']},
+    {grp:'Soufflage',n:'⑥',postes:['scie','assemblage']},
+    {grp:'Moustiquaire',n:'⑦',postes:['scie','assemblage']},
+  ];
+  const opts=`<option value="all"${sel==='all'?' selected':''}>Tous les postes</option>`+POSTES_ALL.map(p=>`<option value="${p}"${sel===p?' selected':''}>${POSTE_LBL[p]}</option>`).join('');
+  let html=`<div class="bt-head"><div><b>BON DE TRAVAIL</b> <span class="pill">#015980 · maquette</span></div>
+    <div class="bt-poste"><label>Poste :</label><select id="btPoste">${opts}</select></div>
+    <div class="pill">Commande ${ORDER_NO} · ${nItems} item(s) · ${totQ} fenêtre(s)</div></div>`;
+  let shown=0;
+  secDefs.filter(d=>sel==='all'||d.postes.includes(sel)).forEach(d=>{ const rows=collect(items,d.grp); if(!rows.length) return; shown++;
+    html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">${d.n} ${d.grp.toUpperCase()}</span>${stationSel(d.grp)}</span>${band(d.postes,sel)}</div>${btTable(rows,d.grp)}</div>`; });
+  const thPostes=['achat','assemblage'];
+  if(sel==='all'||thPostes.includes(sel)){
+    let trows=''; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>Double 1 Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; }); });
+    if(!trows) trows=`<tr><td colspan="6" class="pill">Aucun vitrage</td></tr>`;
+    html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">⑧ THERMOS (achat)</span>${stationSel('Thermos')}</span>${band(thPostes,sel)}</div>
+      <table class="bt-tbl"><thead><tr><th>Item</th><th>Produit</th><th>Dim. verre</th><th>N° lot</th><th>Épaisseur</th><th>Qté</th></tr></thead><tbody>${trows}</tbody></table>
+      <div class="note">Achat fournisseur (ex. Multiver) · lotisation 2×/sem. sur carnet de production · traçabilité par n° de lot.</div></div>`;
+    shown++;
+  }
+  if(!shown) html+=`<div class="note">Aucune pièce ne passe par ce poste pour cette commande.</div>`;
+  html+=`<div class="note">${sel==='all'?'Toutes les sections affichées (choisis un poste pour assigner les stations).':'Filtré pour le poste <b>'+POSTE_LBL[sel]+'</b> — choisis la <b>station (1–6)</b> qui exécute chaque tâche.'} Items agrégés (colonne <b>Item</b>) ; étiquettes dans l’onglet <b>Assemblage</b>. Codes &amp; casiers = placeholders à valider.</div>`;
+  return html;
+}
+
+/* ===== ASSEMBLAGE — étiquettes (calqué sur Assemblage.pdf) ===== */
+const PIECES_FAM={ battant:'P18G-Auv, P18D-Auv, P18A, R18A, T380', guillotine:'Barrure coul guillotine auto', coulissant:'Barrure coul guillotine auto', porte_patio:'Barrure patio multipoints', porte_ext:'Serrure multipoints', porte_int:'Poignée + loquet', fixe:'—' };
+const SECCODE={ battant:'A', guillotine:'GS', fixe:'F', porte_ext:'P', porte_int:'PI', porte_patio:'PP' };
+function frnum(mm){ return (Math.round(mm*10)/10).toString().replace('.',','); }
+function secCode(s){ if(s.family==='coulissant') return 'CSG'+',F'.repeat(Math.max(0,s.sections-1)); return SECCODE[s.family]||''; }
+function nbSections(s){ return (s.family==='coulissant'||s.family==='porte_patio')?s.sections:1; }
+function meneauTxt(s){ if(s.family==='guillotine') return `1: ${Math.round(s.W)}, 1: ${Math.round(s.H/2)}`;
+  if(s.family==='coulissant'){ const sw=Math.round(s.W/s.sections); return Array.from({length:s.sections},()=>'1: '+sw).join(', '); } return ''; }
+function miniSvg(s){ const sc=Math.min(74/s.W,52/s.H),w=s.W*sc,hh=s.H*sc,mu='#555';
+  let g=`<svg width="${w+4}" height="${hh+4}"><rect x="2" y="2" width="${w}" height="${hh}" fill="#eef2f5" stroke="#333"/>`;
+  if(s.family==='coulissant'||s.family==='porte_patio'){ for(let i=1;i<s.sections;i++) g+=`<line x1="${2+w/s.sections*i}" y1="2" x2="${2+w/s.sections*i}" y2="${2+hh}" stroke="${mu}"/>`; }
+  if(s.family==='guillotine') g+=`<line x1="2" y1="${2+hh/2}" x2="${2+w}" y2="${2+hh/2}" stroke="${mu}"/>`;
+  return g+'</svg>';
+}
+function etqCard(it,idx){
+  const s=it.s, fam=FAMILIES[s.family], dimC=`${frnum(s.W)} x ${frnum(s.H)} mm.`;
+  const moul=s.moulure==='none'?`Aucune (${dimC})`:`Brique ${s.moulure==='j'?'J-trim':s.moulure+'″'} (${dimC})`;
+  const cmd=ORDER_NO.split('').map(d=>`<span>${d}</span>`).join('');
+  const bullets=[
+    `- CADRE : ${s.cadreNom}`,
+    s.family==='guillotine'?'- BALANCE: RESSORT 5LBS COURT + RESSORT 6LBS MOYEN':null,
+    `- VERRE : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir`,
+    `- FINITION INT.: ${s.soufflage==='none'?'Aucune':'Ext PVC '+s.soufflage+'″ Fermée (9876-1100), Épais (totale): 10″, Env. à part'}`,
+    meneauTxt(s)?`- MENEAUX: ${meneauTxt(s)}`:null,
+    `- PIÈCES: ${PIECES_FAM[s.family]||'—'}`,
+    s.moust?'- MOUSTIQUAIRE : Fibre de verre':null,
+    `- COUPE-FROID : ${s.coupe}`,
+    `- QUINCAILLERIE : ${s.quinc}`,
+  ].filter(Boolean).join('\n');
+  return `<div class="etq2">
+    <div class="etq2-main">
+      <div class="etq2-box">
+        <div class="small"># Commande</div>
+        <div class="er"><b>${ORDER_NO} \\ ${idx+1}</b><b>015980</b></div>
+        <div class="er2"><span class="small">LIVRÉ À</span> <b>Pierre Naud inc. (Lac-Aux-Sables)</b></div>
+        <div class="er2"><span class="small">VENDU À</span> Pierre Naud inc. (Lac-Aux-Sables)</div>
+        <div class="er3">${fam.code} / ${nbSections(s)} sections ${secCode(s)}</div>
+        <div class="er4">${miniSvg(s)}<span>CADRE : ${dimC}<br>MOUL.EXT.: ${moul}</span></div>
+      </div>
+      <div class="etq2-bul">${bullets}</div>
+      <div class="barcode"></div><div class="barcode-txt">S913${81+idx}TA</div>
+    </div>
+    <div class="etq2-side"><div class="etq2-cmd">${cmd}</div><div class="etq2-itemno">${idx+1}</div></div>
+  </div>`;
+}
+function renderAssemblage(){
+  const items=orderItems();
+  const cards=items.map((it,idx)=>etqCard(it,idx)).join('');
+  return `<div class="bt-head"><div><b>ASSEMBLAGE — étiquettes</b> <span class="pill">À assembler à la fin</span></div>
+    <div class="pill">Commande ${ORDER_NO} · ${items.length} étiquette(s)</div></div>
+    <div class="etq-grid">${cards}</div>
+    <div class="note">Une <b>étiquette par item</b> (n° commande vertical + n° item + code-barres + quincaillerie). Calqué sur l’étape « Assemblage des fenêtres » de Fusion. Codes pièces / n° code-barres = placeholders à valider.</div>`;
+}
+
+/* ===== PANNEAU DONNÉES ===== */
+let TAB='dessin';
+function itemHeader(it,idx){ const s=it.s; return `<div class="item-h"><span class="item-no">${idx+1}</span> ${FAMILIES[s.family].fr} · ${fmt(s.W)} × ${fmt(s.H)}${it.qty>1?' · ×'+it.qty:''}</div>`; }
+function renderTab(){
+  const body=ui('tabbody');
+  if(TAB==='bons'){ body.innerHTML=renderBons(); return; }
+  if(TAB==='assemblage'){ body.innerHTML=renderAssemblage(); return; }
+  const items=orderItems(); let html='';
+  items.forEach((it,idx)=>{
+    const s=it.s, dv=derive(s); html+=itemHeader(it,idx);
+    if(TAB==='dessin') html+=draw2D(s);
+    else if(TAB==='fiche'){ const f=fiche(s); html+=`<div class="two-col"><div><div class="gh">Français</div><div class="desc">${f.fr}</div></div><div><div class="gh">English</div><div class="desc">${f.en}</div></div></div>`; }
+    else if(TAB==='decoupe'){ const rows=dv.comps.map(c=>`<tr><td>${c.grp}</td><td>${c.code}</td><td>${c.desc}</td><td class="num">${c.lng?fmt(c.lng):'—'}</td><td class="num">${c.qte}</td></tr>`).join('');
+      html+=`<table><thead><tr><th>Groupe</th><th>Code</th><th>Pièce</th><th>Longueur</th><th>Qté</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    else if(TAB==='thermos'){ const rows=dv.thermos.length?dv.thermos.map(t=>`<tr><td>${t.desc}</td><td class="num">${fmt(t.w)} × ${fmt(t.h)}</td><td class="num">${t.qte}</td></tr>`).join(''):`<tr><td colspan="3" class="pill">Aucun vitrage (ex. porte pleine)</td></tr>`;
+      html+=`<table><thead><tr><th>Section</th><th>Dimension verre</th><th>Qté</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    else if(TAB==='valid'){ const rows=validate(s,dv).map(v=>`<tr><td>${v.k}</td><td>${v.v}</td><td><span class="badge b-${v.b}">${v.t}</span></td></tr>`).join('');
+      html+=`<table><thead><tr><th>Critère</th><th>Valeur</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table>`; }
+    else if(TAB==='unites'){ html+=`<table><thead><tr><th>Format</th><th>Largeur</th><th>Hauteur</th></tr></thead><tbody>
+      <tr><td>mm (pivot usine)</td><td class="num">${Math.round(s.W)}</td><td class="num">${Math.round(s.H)}</td></tr>
+      <tr><td>Pouces fractionnaires</td><td class="num">${mmToFrac(s.W)}</td><td class="num">${mmToFrac(s.H)}</td></tr>
+      <tr><td>Pouces décimaux</td><td class="num">${mmToDec(s.W)}</td><td class="num">${mmToDec(s.H)}</td></tr>
+      <tr><td>Pieds / pouces</td><td class="num">${mmToFtIn(s.W)}</td><td class="num">${mmToFtIn(s.H)}</td></tr>
+      </tbody></table>`; }
+  });
+  const NOTE={
+    fiche:'Généré automatiquement (proposition #13) — format des étiquettes Fusion.',
+    decoupe:`Liste dérivée des dimensions (couche 4, par unité). Inclut le <b>renfort acier</b> : montants si H &gt; ${REGLES.renfort.seuil_H} mm, traverses si L &gt; ${REGLES.renfort.seuil_L} mm, + 1 par meneau (codes/seuils <b>à valider Fusion</b>). Déductions calibrées sur la commande 031735 — <b>à valider</b>. Perte soudure ${REGLES.perte_soudure_mm} mm/coin.`,
+    thermos:"Génère l'achat verre (ex. Multiver) avec <b>traçabilité par n° de lot</b> · dimensions par unité.",
+    valid:'Energy Star = critère national unique (zones éliminées en 2020). Valeurs estimées.',
+    unites:'Stockage interne = mm. Affichage converti (proposition VI). Arrondi 1/16″.',
+  };
+  if(NOTE[TAB]) html+=`<div class="note">${NOTE[TAB]}</div>`;
+  body.innerHTML=html;
+}
+
+/* ===== OPTIONS PAR FAMILLE ===== */
+function renderFamOpts(){
+  const f=ui('family').value,fam=FAMILIES[f],bx=ui('famOpts'); let h='';
+  if(f==='coulissant'||f==='porte_patio'){ h=`<label>Nombre de sections <span class="help" title="Nombre de panneaux côte à côte sur rails.">?</span></label><select id="sections"><option>2</option><option>3</option><option>4</option></select>
+    <label>Sections ouvrantes <span class="help" title="Coche les panneaux qui coulissent (ouvrants). Les autres restent fixes. Plusieurs ouvrants possibles.">?</span></label><div id="openSecs" class="opensecs"></div>`; }
+  else if(f==='battant'){ h=`<label>Nombre de vantaux <span class="help" title="1 vantail (battant simple) ou 2 vantaux à la française (ouverture des deux côtés + meneau central).">?</span></label><select id="vantaux"><option value="1" selected>1 vantail</option><option value="2">2 vantaux (à la française)</option></select>
+    <label>Sens (vu de l'extérieur) <span class="help" title="Côté des charnières / sens d'ouverture, vu de l'extérieur.">?</span></label><select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>`; }
+  else if(f==='guillotine'){ h=`<div class="pill">2 vantaux verticaux · balance à ressort auto selon hauteur</div>`; }
+  else if(f==='porte_int'){ h=`<label>Sens (vu de l'extérieur) <span class="help" title="Main de la porte (côté charnières).">?</span></label>
+    <select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>
+    <div class="pill">Porte intérieure pleine (bois) — pas de vitrage ni verres latéraux.</div>`; }
+  else if(f==='porte_ext'){ h=`<label>Type de panneau <span class="help" title="Composition de la porte : pleine, mi-vitrée, pleine vitre ou panneau décoratif.">?</span></label>
+    <select id="panneau"><option value="plein">Pleine</option><option value="mi" selected>Mi-vitrée</option><option value="vitre">Pleine vitre</option><option value="deco">Décoratif</option></select>
+    <label>Verres latéraux <span class="help" title="Impostes vitrées fixes de chaque côté de la porte (sidelights).">?</span></label>
+    <select id="sidelights"><option value="none">Aucun</option><option value="gauche">Gauche</option><option value="droite">Droite</option><option value="deux">Deux côtés</option></select>
+    <label>Vitrage — largeur <span class="help" title="Largeur du panneau vitré de la porte (fraction de la porte).">?</span></label><input type="range" id="glassW" min="0.3" max="0.92" step="0.02" value="0.62">
+    <label>Vitrage — hauteur <span class="help" title="Hauteur du panneau vitré de la porte.">?</span></label><input type="range" id="glassH" min="0.25" max="0.92" step="0.02" value="0.46">
+    <label>Sens (vu de l'extérieur) <span class="help" title="Main de la porte, vue de l'extérieur.">?</span></label>
+    <select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>`; }
+  else h=`<div class="pill">Châssis fixe — non ouvrant</div>`;
+  bx.innerHTML=h;
+  ['ouvrant','panneau','sidelights','vantaux','glassW','glassH'].forEach(id=>ui(id)?.addEventListener('input',refresh));
+  if(ui('sections')){ renderOpenSecs(); ui('sections').addEventListener('change',()=>{ renderOpenSecs(); refresh(); }); }
+}
+function renderOpenSecs(){
+  const wrap=ui('openSecs'); if(!wrap) return; const n=+ui('sections').value; let h='';
+  for(let i=0;i<n;i++) h+=`<label class="oscb"><input type="checkbox" class="osc" ${i===n-1?'checked':''}> ${i+1}</label>`;
+  wrap.innerHTML=h;
+  wrap.querySelectorAll('.osc').forEach(cb=>cb.addEventListener('change',refresh));
+}
+
+/* ===== PRIX ESTIMÉ (approximatif, à calibrer avec Fusion) ===== */
+function priceEstimate(s){ const fam=FAMILIES[s.family], area=s.W*s.H/1e6; let p=fam.door?(650+area*260):(area*(s.vType==='triple'?560:380));
+  if(s.soufflage!=='none') p+=45; if(s.moulure!=='none') p+=35;
+  if(s.grilles&&s.grilles!=='none') p+=area*95; if(s.aspect==='depoli') p+=area*70;
+  if(s.moust) p+=40; if(s.vantaux===2) p+=130;
+  if(s.imposte&&s.imposte!=='none') p+=s.imposteH/1000*s.W/1000*420+70;
+  return Math.round(p);
+}
+function updatePrice(){ const pe=ui('price'); if(!pe) return; const p=priceEstimate(state()), tot=ORDER.reduce((a,it)=>a+priceEstimate(it.s)*it.qty,0);
+  pe.innerHTML=`≈ ${p.toLocaleString('fr-CA')} $ <small>CAD · estimé</small>`+(ORDER.length?`<br><small>Commande (${ORDER.length}) : ${tot.toLocaleString('fr-CA')} $</small>`:''); }
+
+/* ===== DIMENSIONS PAR DÉFAUT RÉALISTES PAR FAMILLE ===== */
+const DIMS={ porte_ext:[914,2134], porte_int:[813,2032], porte_patio:[1829,2032], battant:[610,1219], guillotine:[914,1524], coulissant:[1219,914], fixe:[1219,914] };
+function applyDefaults(){ const d=DIMS[ui('family').value]; if(d){ ui('w').value=d[0]; ui('h').value=d[1]; } }
+
+/* ===== RAFRAÎCHISSEMENT ===== */
+function refresh(){ const s=state(); ui('wLbl').textContent=fmt(s.W); ui('hLbl').textContent=fmt(s.H); if(ui('impHLbl')) ui('impHLbl').textContent=fmt(s.imposteH); build3D(s); renderTab(); updatePrice(); }
+['family','w','h','unit','cadre','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
+ui('tabs').addEventListener('click',e=>{ if(!e.target.dataset.t)return; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); e.target.classList.add('active'); TAB=e.target.dataset.t; renderTab(); });
+ui('addItem').addEventListener('click',addToOrder);
+ui('orderList').addEventListener('click',e=>{ if(e.target.dataset.clr){ ORDER=[]; renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); } else if(e.target.dataset.i!==undefined) removeItem(+e.target.dataset.i); });
+ui('tabbody').addEventListener('change',e=>{
+  if(e.target.id==='btPoste'){ BT_POSTE=e.target.value; renderTab(); }
+  else if(e.target.classList.contains('stsel')){ POSTE_ASSIGN[e.target.dataset.key]=e.target.value; }
+});
+renderOrderList();
+
+function resize(){ const w=view.clientWidth,h=view.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+window.addEventListener('resize',resize);
+
+/* ===== CLIC = OUVRIR / FERMER L'OUVRANT ===== */
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2(); let downXY=null;
+renderer.domElement.addEventListener('pointerdown',e=>{ downXY=[e.clientX,e.clientY]; });
+renderer.domElement.addEventListener('pointermove',e=>{ // curseur main si on survole un ouvrant
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; ray.setFromCamera(ndc,camera);
+  const h=ray.intersectObjects(SASHES.map(x=>x.g),true); renderer.domElement.style.cursor=h.length?'pointer':'grab';
+});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!downXY) return; const moved=Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]); downXY=null; if(moved>6) return; // c'était un glisser (rotation)
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects(root.children,true); if(!hits.length) return;
+  let o=hits[0].object, sa=null; while(o&&o!==root){ const f=SASHES.find(x=>x.g===o); if(f){sa=f;break;} o=o.parent; }
+  if(!sa) sa=SASHES[0]; if(sa) sa.opened=!sa.opened;   // clic sur une partie fixe → bascule l'ouvrant principal
+});
+
+function loop(){ controls.update();
+  for(const sa of SASHES){ const t=sa.opened?1:0; sa.p+=(t-sa.p)*0.16; const k=sa.p;
+    sa.g.position.x=sa.base.x+(sa.open.x-sa.base.x)*k;
+    sa.g.position.y=sa.base.y+(sa.open.y-sa.base.y)*k;
+    sa.g.rotation.y=(sa.open.rot||0)*k;
+  }
+  renderer.render(scene,camera); requestAnimationFrame(loop); }
+/* ===== VUE EXTÉRIEUR ⇄ INTÉRIEUR ===== */
+function setView(v){ const cy=(+ui('h').value)*MM/2, d=3.0;
+  camera.position.set(v==='int'?-1.4:1.4, cy+0.25, v==='int'?-d:d); controls.target.set(0,cy,0); controls.update();
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); }
+ui('viewBtns').addEventListener('click',e=>{ if(e.target.dataset.v) setView(e.target.dataset.v); });
+
+renderFamOpts(); resize(); refresh(); loop();
+</script>
+</body>
+</html>

@@ -58,16 +58,14 @@ class PffConfiguration(models.Model):
     def action_draft(self):
         self.write({'state': 'draft'})
 
-    # --- Phase B : ouvrir le configurateur 3D (OWL) ---
+    # --- Ouvrir le configurateur 3D complet (action client OWL + iframe) ---
     def action_open_configurator(self):
         self.ensure_one()
-        # TODO Phase B : action client OWL embarquant configurateur_prototype.html
         return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'pff.configuration',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'current',
+            'type': 'ir.actions.client',
+            'tag': 'pff_configurator',
+            'name': 'Configurateur',
+            'params': {'config_id': self.id},
         }
 
     # --- Phase C : créer un devis dans Ventes ---

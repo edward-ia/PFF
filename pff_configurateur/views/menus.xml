@@ -61,4 +61,13 @@
               action="action_pff_suppliers" sequence="20"/>
     <menuitem id="menu_pff_produits_achat" name="Mes produits d'achat" parent="menu_pff_fournisseurs"
               action="action_pff_products_purchase" sequence="30"/>
+
+    <!-- Configuration -->
+    <menuitem id="menu_pff_configuration" name="Configuration" parent="menu_pff_root" sequence="90"/>
+    <menuitem id="menu_pff_postes" name="Postes de travail" parent="menu_pff_configuration"
+              action="action_pff_poste" sequence="10"/>
+    <menuitem id="menu_pff_profils" name="Profilés / codes pièces" parent="menu_pff_configuration"
+              action="action_pff_profil" sequence="20"/>
+    <menuitem id="menu_pff_verres" name="Types de verre (Energy Star)" parent="menu_pff_configuration"
+              action="action_pff_verre" sequence="30"/>
 </odoo>

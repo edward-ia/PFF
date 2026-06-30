@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== POSTES DE TRAVAIL ===== -->
+    <record id="view_pff_poste_list" model="ir.ui.view">
+        <field name="name">pff.poste.list</field>
+        <field name="model">pff.poste</field>
+        <field name="arch" type="xml">
+            <list string="Postes de travail" editable="bottom">
+                <field name="number"/>
+                <field name="name"/>
+                <field name="type"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_pff_poste" model="ir.actions.act_window">
+        <field name="name">Postes de travail</field>
+        <field name="res_model">pff.poste</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ===== PROFILÉS / CODES PIÈCES ===== -->
+    <record id="view_pff_profil_list" model="ir.ui.view">
+        <field name="name">pff.profil.list</field>
+        <field name="model">pff.profil</field>
+        <field name="arch" type="xml">
+            <list string="Profilés / codes pièces" editable="bottom">
+                <field name="composante"/>
+                <field name="family"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_pff_profil" model="ir.actions.act_window">
+        <field name="name">Profilés / codes pièces</field>
+        <field name="res_model">pff.profil</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- ===== TYPES DE VERRE (ENERGY STAR) ===== -->
+    <record id="view_pff_verre_list" model="ir.ui.view">
+        <field name="name">pff.verre.list</field>
+        <field name="model">pff.verre</field>
+        <field name="arch" type="xml">
+            <list string="Types de verre" editable="bottom">
+                <field name="name"/>
+                <field name="u_value"/>
+                <field name="er_value"/>
+                <field name="thickness"/>
+                <field name="kg_m2"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_pff_verre" model="ir.actions.act_window">
+        <field name="name">Types de verre (Energy Star)</field>
+        <field name="res_model">pff.verre</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>
