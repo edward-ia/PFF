@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== Actions sur modèles existants ===== -->
+    <record id="action_pff_customers" model="ir.actions.act_window">
+        <field name="name">Mes clients</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('customer_rank', '>', 0)]</field>
+        <field name="context">{'default_customer_rank': 1, 'res_partner_search_mode': 'customer'}</field>
+    </record>
+
+    <record id="action_pff_products" model="ir.actions.act_window">
+        <field name="name">Mes produits</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('sale_ok', '=', True)]</field>
+    </record>
+
+    <record id="action_pff_purchase_orders" model="ir.actions.act_window">
+        <field name="name">Mes demandes d'achat</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Demandes d'achat des profilés PVC et des verres (thermos)</p>
+        </field>
+    </record>
+
+    <record id="action_pff_suppliers" model="ir.actions.act_window">
+        <field name="name">Mes fournisseurs</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('supplier_rank', '>', 0)]</field>
+        <field name="context">{'default_supplier_rank': 1, 'res_partner_search_mode': 'supplier'}</field>
+    </record>
+
+    <record id="action_pff_products_purchase" model="ir.actions.act_window">
+        <field name="name">Mes produits d'achat</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('purchase_ok', '=', True)]</field>
+    </record>
+
+    <!-- ===== Menu racine ===== -->
+    <menuitem id="menu_pff_root" name="Configurateur" sequence="5"
+              web_icon="pff_configurateur,static/description/icon.png"/>
+
+    <!-- Clients -->
+    <menuitem id="menu_pff_clients" name="Clients" parent="menu_pff_root" sequence="10"/>
+    <menuitem id="menu_pff_commandes" name="Commandes client" parent="menu_pff_clients"
+              action="action_pff_configuration" sequence="10"/>
+    <menuitem id="menu_pff_mes_clients" name="Mes clients" parent="menu_pff_clients"
+              action="action_pff_customers" sequence="20"/>
+    <menuitem id="menu_pff_mes_produits" name="Mes produits" parent="menu_pff_clients"
+              action="action_pff_products" sequence="30"/>
+
+    <!-- Fournisseurs -->
+    <menuitem id="menu_pff_fournisseurs" name="Fournisseurs" parent="menu_pff_root" sequence="20"/>
+    <menuitem id="menu_pff_demandes_achat" name="Mes demandes d'achat" parent="menu_pff_fournisseurs"
+              action="action_pff_purchase_orders" sequence="10"/>
+    <menuitem id="menu_pff_mes_fournisseurs" name="Mes fournisseurs" parent="menu_pff_fournisseurs"
+              action="action_pff_suppliers" sequence="20"/>
+    <menuitem id="menu_pff_produits_achat" name="Mes produits d'achat" parent="menu_pff_fournisseurs"
+              action="action_pff_products_purchase" sequence="30"/>
+</odoo>

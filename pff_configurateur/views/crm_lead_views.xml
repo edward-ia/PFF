@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="crm_lead_form_view_pff" model="ir.ui.view">
+        <field name="name">crm.lead.form.pff</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_pff_configure" type="object"
+                        class="oe_stat_button" icon="fa-cubes" string="Configurer le produit">
+                    <field name="pff_config_count" widget="statinfo" string="Configurations"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>
