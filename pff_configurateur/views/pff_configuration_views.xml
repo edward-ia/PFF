@@ -86,6 +86,9 @@
                                     <field name="price_unit"/>
                                     <field name="price_subtotal" widget="monetary"/>
                                     <field name="currency_id" column_invisible="1"/>
+                                    <button name="action_edit_line" type="object"
+                                            string="Reprendre" icon="fa-cubes"
+                                            title="Reprendre la configuration de ce produit"/>
                                 </list>
                             </field>
                             <group class="oe_subtotal_footer oe_right">

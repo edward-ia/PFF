@@ -20,7 +20,10 @@ export class PffConfigurator extends Component {
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         this.resume = (a.params && a.params.resume) || (a.context && a.context.resume) || false;
+        // Si défini : on ne reprend/remplace QUE cette ligne (bouton par ligne).
+        this.lineId = (a.params && a.params.line_id) || (a.context && a.context.line_id) || false;
         this.existingLineIds = [];
+        this.editSequence = false;
         this._onMessage = this._onMessage.bind(this);
         onMounted(() => window.addEventListener("message", this._onMessage));
         onWillUnmount(() => window.removeEventListener("message", this._onMessage));
@@ -35,12 +38,17 @@ export class PffConfigurator extends Component {
         // renvoie la config existante à recharger.
         if (msg.type === "pff_ready") {
             if (this.resume && this.configId) {
+                // line_id → une seule ligne ; sinon toutes les lignes de la config.
+                const domain = this.lineId
+                    ? [["id", "=", this.lineId]]
+                    : [["configuration_id", "=", this.configId]];
                 const lines = await this.orm.searchRead(
                     "pff.configuration.line",
-                    [["configuration_id", "=", this.configId]],
-                    ["config_json", "qty"]
+                    domain,
+                    ["config_json", "qty", "sequence"]
                 );
                 this.existingLineIds = lines.map((l) => l.id);
+                this.editSequence = lines.length ? lines[0].sequence : false;
                 const items = lines.map((l) => {
                     let config = {};
                     try {
@@ -67,16 +75,23 @@ export class PffConfigurator extends Component {
                 this.existingLineIds = [];
             }
             if (items.length) {
-                const vals = items.map((d) => ({
-                    configuration_id: this.configId,
-                    family: d.family,
-                    width: d.width,
-                    height: d.height,
-                    description: d.description,
-                    qty: d.qty || 1,
-                    price_unit: d.price || 0,
-                    config_json: JSON.stringify(d.config || {}),
-                }));
+                const vals = items.map((d) => {
+                    const v = {
+                        configuration_id: this.configId,
+                        family: d.family,
+                        width: d.width,
+                        height: d.height,
+                        description: d.description,
+                        qty: d.qty || 1,
+                        price_unit: d.price || 0,
+                        config_json: JSON.stringify(d.config || {}),
+                    };
+                    // Édition d'une ligne précise : on garde sa position dans la liste.
+                    if (this.lineId && this.editSequence !== false && this.editSequence != null) {
+                        v.sequence = this.editSequence;
+                    }
+                    return v;
+                });
                 await this.orm.create("pff.configuration.line", vals);
             }
             this.notification.add(

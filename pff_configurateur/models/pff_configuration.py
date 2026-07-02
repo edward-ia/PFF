@@ -140,3 +140,16 @@ class PffConfigurationLine(models.Model):
     def _compute_subtotal(self):
         for line in self:
             line.price_subtotal = line.qty * line.price_unit
+
+    def action_edit_line(self):
+        """Reprendre la configuration de CE produit précis : ouvre le
+        configurateur sur cette ligne ; seule cette ligne sera remplacée
+        à la validation (les autres produits restent intacts)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'pff_configurator',
+            'name': 'Configurateur',
+            'params': {'config_id': self.configuration_id.id, 'resume': True, 'line_id': self.id},
+            'context': {'config_id': self.configuration_id.id, 'resume': True, 'line_id': self.id},
+        }
