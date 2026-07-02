@@ -16,9 +16,11 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=3";
+        this.src = "/pff_configurateur/static/configurateur.html?v=4";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
+        this.resume = (a.params && a.params.resume) || (a.context && a.context.resume) || false;
+        this.existingLineIds = [];
         this._onMessage = this._onMessage.bind(this);
         onMounted(() => window.addEventListener("message", this._onMessage));
         onWillUnmount(() => window.removeEventListener("message", this._onMessage));
@@ -26,23 +28,61 @@ export class PffConfigurator extends Component {
 
     async _onMessage(ev) {
         const msg = ev.data;
-        if (!msg || msg.type !== "pff_valider") {
+        if (!msg) {
+            return;
+        }
+        // Le configurateur signale qu'il est prêt → en mode reprise, on lui
+        // renvoie la config existante à recharger.
+        if (msg.type === "pff_ready") {
+            if (this.resume && this.configId) {
+                const lines = await this.orm.searchRead(
+                    "pff.configuration.line",
+                    [["configuration_id", "=", this.configId]],
+                    ["config_json", "qty"]
+                );
+                this.existingLineIds = lines.map((l) => l.id);
+                const items = lines.map((l) => {
+                    let config = {};
+                    try {
+                        config = JSON.parse(l.config_json || "{}");
+                    } catch (e) {
+                        config = {};
+                    }
+                    return { config, qty: l.qty || 1 };
+                });
+                if (ev.source) {
+                    ev.source.postMessage({ type: "pff_restore", items }, "*");
+                }
+            }
+            return;
+        }
+        if (msg.type !== "pff_valider") {
             return;
         }
         const items = msg.items || [];
-        if (this.configId && items.length) {
-            const vals = items.map((d) => ({
-                configuration_id: this.configId,
-                family: d.family,
-                width: d.width,
-                height: d.height,
-                description: d.description,
-                qty: d.qty || 1,
-                price_unit: d.price || 0,
-                config_json: JSON.stringify(d.config || {}),
-            }));
-            await this.orm.create("pff.configuration.line", vals);
-            this.notification.add("Configuration enregistrée", { type: "success" });
+        if (this.configId) {
+            // Mode reprise : on remplace les lignes existantes.
+            if (this.resume && this.existingLineIds.length) {
+                await this.orm.unlink("pff.configuration.line", this.existingLineIds);
+                this.existingLineIds = [];
+            }
+            if (items.length) {
+                const vals = items.map((d) => ({
+                    configuration_id: this.configId,
+                    family: d.family,
+                    width: d.width,
+                    height: d.height,
+                    description: d.description,
+                    qty: d.qty || 1,
+                    price_unit: d.price || 0,
+                    config_json: JSON.stringify(d.config || {}),
+                }));
+                await this.orm.create("pff.configuration.line", vals);
+            }
+            this.notification.add(
+                this.resume ? "Configuration mise à jour" : "Configuration enregistrée",
+                { type: "success" }
+            );
         }
         // Retour à la fiche de configuration
         this.action.doAction({

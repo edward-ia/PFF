@@ -552,7 +552,7 @@ function draw2D(s){
 /* ===== COMMANDE (multi-produits) ===== */
 let ORDER=[]; const ORDER_NO='031735';
 function snapshot(){ return {...state()}; }
-function orderItems(){ return ORDER.length?ORDER:[{s:snapshot(),qty:1}]; }
+function orderItems(){ return ORDER.length?ORDER:[{s:snapshot(),qty:Math.max(1,Math.round(+ui('itemQty').value||1))}]; }
 function addToOrder(){ const q=Math.max(1,Math.round(+ui('itemQty').value||1)); ORDER.push({s:snapshot(),qty:q}); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
 function removeItem(i){ ORDER.splice(i,1); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
 function renderOrderList(){
@@ -800,7 +800,37 @@ ui('valider').addEventListener('click',()=>{
   window.parent.postMessage({type:'pff_valider', items}, '*');
 });
 
+/* ===== REPRENDRE — restauration d'une config existante (depuis Odoo) ===== */
+function restoreState(s){
+  if(!s||!s.family||!FAMILIES[s.family]) return;
+  const set=(id,v)=>{ const el=ui(id); if(el&&v!=null) el.value=v; };
+  const chk=(id,v)=>{ const el=ui(id); if(el&&v!=null) el.checked=!!v; };
+  ui('family').value=s.family; renderFamOpts();
+  set('w',s.W); set('h',s.H); set('unit',s.unit);
+  if(s.cadreCode!=null) set('cadre', s.cadreCode+'|'+s.cadreNom);
+  if(s.vType!=null) set('verre', s.vType+'|'+s.vTint);
+  set('aspect',s.aspect); set('colExt',s.colExt); set('colInt',s.colInt);
+  set('moulure',s.moulure); set('soufflage',s.soufflage); set('grilles',s.grilles);
+  set('imposte',s.imposte); set('imposteH',s.imposteH); set('imposteW',s.imposteW);
+  set('quinc',s.quinc); set('coupe',s.coupe); chk('moust',s.moust);
+  set('vantaux',s.vantaux); set('glassW',s.glassW); set('glassH',s.glassH);
+  set('ouvrant',s.ouvrant); set('panneau',s.panneau); set('sidelights',s.sidelights);
+  if(ui('sections')){ set('sections',s.sections); renderOpenSecs();
+    if(Array.isArray(s.openSecs)){ const cbs=document.querySelectorAll('#openSecs .osc'); s.openSecs.forEach((v,i)=>{ if(cbs[i]) cbs[i].checked=!!v; }); } }
+  refresh(); if(typeof setView==='function') setView('ext');
+}
+function restoreOrder(items){
+  items=(items||[]).filter(it=>it&&it.config&&it.config.family);
+  if(!items.length) return;
+  restoreState(items[0].config);
+  if(items.length>1){ ORDER=items.map(it=>({s:it.config, qty:it.qty||1})); }
+  else { ORDER=[]; if(ui('itemQty')) ui('itemQty').value=items[0].qty||1; }
+  renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab();
+}
+window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_restore') restoreOrder(m.items); });
+
 renderFamOpts(); resize(); refresh(); loop();
+try{ window.parent.postMessage({type:'pff_ready'}, '*'); }catch(e){}
 </script>
 </body>
 </html>

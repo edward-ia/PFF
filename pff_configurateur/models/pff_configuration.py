@@ -69,6 +69,18 @@ class PffConfiguration(models.Model):
             'context': {'config_id': self.id},
         }
 
+    # --- Reprendre : rouvre le configurateur avec la config existante rechargée
+    #     (les lignes seront REMPLACÉES à la validation) ---
+    def action_resume_configurator(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'pff_configurator',
+            'name': 'Configurateur',
+            'params': {'config_id': self.id, 'resume': True},
+            'context': {'config_id': self.id, 'resume': True},
+        }
+
     # --- Phase C : créer un devis dans Ventes ---
     def action_create_quotation(self):
         self.ensure_one()

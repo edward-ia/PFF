@@ -28,13 +28,23 @@
         <field name="arch" type="xml">
             <form string="Produit configuré">
                 <header>
+                    <!-- Reprendre : visible seulement s'il y a déjà une config -->
+                    <button name="action_resume_configurator" type="object"
+                            string="Reprendre la configuration" class="btn-primary"
+                            icon="fa-cubes" invisible="not line_ids"/>
+                    <!-- Nouvelle configuration : violet quand vide, blanc quand une config existe -->
                     <button name="action_open_configurator" type="object"
-                            string="Nouvelle configuration" class="btn-primary" icon="fa-cubes"/>
+                            string="Nouvelle configuration" class="btn-primary"
+                            icon="fa-plus" invisible="line_ids"/>
+                    <button name="action_open_configurator" type="object"
+                            string="Nouvelle configuration" class="btn-secondary"
+                            icon="fa-plus" invisible="not line_ids"/>
                     <button name="action_create_quotation" type="object"
                             string="Créer un devis" class="btn-primary"
                             invisible="sale_order_id"/>
                     <button name="action_production" type="object"
-                            string="Lancer en fabrication" invisible="state != 'draft'"/>
+                            string="Lancer en fabrication" class="btn-primary"
+                            invisible="state != 'draft'"/>
                     <button name="action_done" type="object"
                             string="Marquer terminé" invisible="state != 'production'"/>
                     <button name="action_draft" type="object"
