@@ -1,3 +1,5 @@
+import json
+
 from odoo import models, fields, api, _
 
 FAMILIES = [
@@ -34,6 +36,8 @@ class PffConfiguration(models.Model):
                                   default=lambda self: self.env.company.currency_id)
     amount_total = fields.Monetary(string='Total', compute='_compute_amount_total', store=True)
     sale_order_id = fields.Many2one('sale.order', string='Devis', readonly=True, copy=False)
+    purchase_order_id = fields.Many2one('purchase.order', string="Bon d'achat verre",
+                                        readonly=True, copy=False)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
 
     @api.model_create_multi
@@ -50,7 +54,12 @@ class PffConfiguration(models.Model):
 
     # --- Statuts ---
     def action_production(self):
-        self.write({'state': 'production'})
+        for rec in self:
+            rec.write({'state': 'production'})
+            # Automatisation : à la mise en fabrication, on crée le bon d'achat
+            # verre BROUILLON (silencieux). L'acheteur assigne le fournisseur et valide.
+            if not rec.purchase_order_id:
+                rec._create_glass_po()
 
     def action_done(self):
         self.write({'state': 'done'})
@@ -67,18 +76,6 @@ class PffConfiguration(models.Model):
             'name': 'Configurateur',
             'params': {'config_id': self.id},
             'context': {'config_id': self.id},
-        }
-
-    # --- Reprendre : rouvre le configurateur avec la config existante rechargée
-    #     (les lignes seront REMPLACÉES à la validation) ---
-    def action_resume_configurator(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'pff_configurator',
-            'name': 'Configurateur',
-            'params': {'config_id': self.id, 'resume': True},
-            'context': {'config_id': self.id, 'resume': True},
         }
 
     # --- Phase C : créer un devis dans Ventes ---
@@ -118,6 +115,68 @@ class PffConfiguration(models.Model):
             'target': 'current',
         }
 
+    # --- Phase D : bon d'achat verre (thermos) créé automatiquement en fabrication ---
+    def _create_glass_po(self):
+        """Crée un purchase.order BROUILLON avec une ligne par thermos (mesures
+        capturées par le configurateur → aucun recalcul). Silencieux : renvoie
+        None sans bloquer s'il n'y a pas de vitrage. Le fournisseur (défaut
+        Multiver) et la confirmation restent à la charge de l'acheteur."""
+        self.ensure_one()
+        tmpl = self.env.ref('pff_configurateur.product_pff_thermos',
+                            raise_if_not_found=False)
+        product = tmpl.product_variant_id if tmpl else False
+        if not product:
+            return False
+        po_lines = []
+        for line in self.line_ids:
+            if not line.thermos_json:
+                continue
+            try:
+                data = json.loads(line.thermos_json)
+            except (ValueError, TypeError):
+                continue
+            glass = data.get('glass') or 'Thermos'
+            ep = data.get('ep') or ''
+            for t in data.get('thermos', []):
+                qty = (t.get('qte') or 1) * (line.qty or 1)
+                name = "%s — %s × %s mm%s" % (
+                    glass, t.get('w'), t.get('h'),
+                    (' (ép. %s)' % ep) if ep else '',
+                )
+                # product_uom / date_planned / price_unit : laissés aux calculs
+                # Odoo (dérivés du produit) pour rester compatible Odoo 19.
+                po_lines.append((0, 0, {
+                    'product_id': product.id,
+                    'name': name,
+                    'product_qty': qty,
+                }))
+        if not po_lines:
+            return False
+        # Fournisseur par défaut (l'acheteur peut le changer avant de valider)
+        vendor = self.env.ref('pff_configurateur.res_partner_multiver',
+                              raise_if_not_found=False)
+        if not vendor:
+            vendor = self.env['res.partner'].search([('name', '=', 'Multiver')], limit=1)
+        if not vendor:
+            vendor = self.env['res.partner'].create({'name': 'Multiver', 'supplier_rank': 1})
+        po = self.env['purchase.order'].create({
+            'partner_id': vendor.id,
+            'origin': self.name,
+            'order_line': po_lines,
+        })
+        self.purchase_order_id = po.id
+        return po
+
+    def action_view_purchase(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'purchase.order',
+            'res_id': self.purchase_order_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
 
 class PffConfigurationLine(models.Model):
     _name = 'pff.configuration.line'
@@ -131,6 +190,7 @@ class PffConfigurationLine(models.Model):
     height = fields.Float(string='Hauteur (mm)', default=914)
     description = fields.Char(string='Désignation')
     config_json = fields.Text(string='Paramètres (JSON)')   # tout l'état du configurateur
+    thermos_json = fields.Text(string='Thermos (JSON)')     # verre capturé pour le bon d'achat
     qty = fields.Integer(string='Qté', default=1)
     price_unit = fields.Float(string='Prix unitaire')
     price_subtotal = fields.Float(string='Sous-total', compute='_compute_subtotal', store=True)
@@ -150,6 +210,6 @@ class PffConfigurationLine(models.Model):
             'type': 'ir.actions.client',
             'tag': 'pff_configurator',
             'name': 'Configurateur',
-            'params': {'config_id': self.configuration_id.id, 'resume': True, 'line_id': self.id},
-            'context': {'config_id': self.configuration_id.id, 'resume': True, 'line_id': self.id},
+            'params': {'config_id': self.configuration_id.id, 'line_id': self.id},
+            'context': {'config_id': self.configuration_id.id, 'line_id': self.id},
         }

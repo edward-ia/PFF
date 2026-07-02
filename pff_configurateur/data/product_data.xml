@@ -7,4 +7,19 @@
         <field name="purchase_ok" eval="False"/>
         <field name="list_price">0.0</field>
     </record>
+
+    <!-- Phase D : produit générique pour le bon d'achat verre + fournisseur -->
+    <record id="product_pff_thermos" model="product.template">
+        <field name="name">Thermos (verre scellé)</field>
+        <field name="type">consu</field>
+        <field name="sale_ok" eval="False"/>
+        <field name="purchase_ok" eval="True"/>
+        <field name="list_price">0.0</field>
+    </record>
+
+    <record id="res_partner_multiver" model="res.partner">
+        <field name="name">Multiver</field>
+        <field name="company_type">company</field>
+        <field name="supplier_rank">1</field>
+    </record>
 </odoo>

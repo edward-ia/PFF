@@ -16,11 +16,11 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=4";
+        this.src = "/pff_configurateur/static/configurateur.html?v=6";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
-        this.resume = (a.params && a.params.resume) || (a.context && a.context.resume) || false;
-        // Si défini : on ne reprend/remplace QUE cette ligne (bouton par ligne).
+        // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »
+        // par ligne). Absent = nouvelle configuration (on ajoute des lignes).
         this.lineId = (a.params && a.params.line_id) || (a.context && a.context.line_id) || false;
         this.existingLineIds = [];
         this.editSequence = false;
@@ -34,17 +34,13 @@ export class PffConfigurator extends Component {
         if (!msg) {
             return;
         }
-        // Le configurateur signale qu'il est prêt → en mode reprise, on lui
-        // renvoie la config existante à recharger.
+        // Le configurateur signale qu'il est prêt → si on reprend une ligne,
+        // on lui renvoie sa config à recharger.
         if (msg.type === "pff_ready") {
-            if (this.resume && this.configId) {
-                // line_id → une seule ligne ; sinon toutes les lignes de la config.
-                const domain = this.lineId
-                    ? [["id", "=", this.lineId]]
-                    : [["configuration_id", "=", this.configId]];
+            if (this.lineId && this.configId) {
                 const lines = await this.orm.searchRead(
                     "pff.configuration.line",
-                    domain,
+                    [["id", "=", this.lineId]],
                     ["config_json", "qty", "sequence"]
                 );
                 this.existingLineIds = lines.map((l) => l.id);
@@ -69,8 +65,8 @@ export class PffConfigurator extends Component {
         }
         const items = msg.items || [];
         if (this.configId) {
-            // Mode reprise : on remplace les lignes existantes.
-            if (this.resume && this.existingLineIds.length) {
+            // Reprise d'une ligne : on remplace la ligne éditée.
+            if (this.lineId && this.existingLineIds.length) {
                 await this.orm.unlink("pff.configuration.line", this.existingLineIds);
                 this.existingLineIds = [];
             }
@@ -85,6 +81,12 @@ export class PffConfigurator extends Component {
                         qty: d.qty || 1,
                         price_unit: d.price || 0,
                         config_json: JSON.stringify(d.config || {}),
+                        // Thermos/verre capturés au configurateur → base du bon d'achat
+                        thermos_json: JSON.stringify({
+                            glass: d.glass || "",
+                            ep: d.ep || "",
+                            thermos: d.thermos || [],
+                        }),
                     };
                     // Édition d'une ligne précise : on garde sa position dans la liste.
                     if (this.lineId && this.editSequence !== false && this.editSequence != null) {
@@ -95,7 +97,7 @@ export class PffConfigurator extends Component {
                 await this.orm.create("pff.configuration.line", vals);
             }
             this.notification.add(
-                this.resume ? "Configuration mise à jour" : "Configuration enregistrée",
+                this.lineId ? "Configuration mise à jour" : "Configuration enregistrée",
                 { type: "success" }
             );
         }

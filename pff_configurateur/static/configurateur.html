@@ -792,10 +792,16 @@ ui('viewBtns').addEventListener('click',e=>{ if(e.target.dataset.v) setView(e.ta
 
 /* ===== VALIDER → renvoie la configuration à Odoo (postMessage) ===== */
 ui('valider').addEventListener('click',()=>{
-  const items=orderItems().map(it=>{ const s=it.s; return {
+  const items=orderItems().map(it=>{ const s=it.s; const dv=derive(s);
+    const tint={clair:'Clair',bronze:'Bronze',gray:'Gris'}[s.vTint]||s.vTint||'';
+    const glass=(s.vType==='triple'?'Triple':'Double 1')+' Low-E Argon '+tint+(s.aspect==='depoli'?' (dépoli)':'');
+    const ep=(VERRE[s.vType]||{}).ep||'';
+    return {
     family:s.family, width:Math.round(s.W), height:Math.round(s.H),
     description:FAMILIES[s.family].fr+' '+Math.round(s.W)+' × '+Math.round(s.H)+' mm',
-    qty:it.qty||1, price:priceEstimate(s), config:s };
+    qty:it.qty||1, price:priceEstimate(s), config:s,
+    // Thermos capturés ici (calcul déjà fait par derive) → pas de recalcul Python
+    thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})), glass, ep };
   });
   window.parent.postMessage({type:'pff_valider', items}, '*');
 });
@@ -823,8 +829,7 @@ function restoreOrder(items){
   items=(items||[]).filter(it=>it&&it.config&&it.config.family);
   if(!items.length) return;
   restoreState(items[0].config);
-  if(items.length>1){ ORDER=items.map(it=>({s:it.config, qty:it.qty||1})); }
-  else { ORDER=[]; if(ui('itemQty')) ui('itemQty').value=items[0].qty||1; }
+  ORDER=[]; if(ui('itemQty')) ui('itemQty').value=items[0].qty||1;
   renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab();
 }
 window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_restore') restoreOrder(m.items); });
