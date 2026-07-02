@@ -14,7 +14,9 @@ export class PffConfigurator extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-        this.src = "/pff_configurateur/static/configurateur.html";
+        // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
+        // pour forcer le navigateur à recharger le fichier statique.
+        this.src = "/pff_configurateur/static/configurateur.html?v=3";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         this._onMessage = this._onMessage.bind(this);
