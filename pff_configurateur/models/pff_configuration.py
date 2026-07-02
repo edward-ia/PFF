@@ -184,6 +184,107 @@ class PffConfiguration(models.Model):
             'target': 'current',
         }
 
+    # --- Bons de travail (feuilles de production) : données pour le rapport QWeb ---
+    # Routage composante → postes (chevrons), et ordre d'affichage des feuilles.
+    _BT_POSTES = {
+        'Cadre': ['Scie', 'Poinçon machinage', 'Soudage'],
+        'Volet': ['Scie', 'Poinçon machinage', 'Soudage'],
+        'Parclose': ['Scie', 'Poinçon machinage'],
+        'Meneau': ['Scie', 'Poinçon machinage', 'Sous-ensemble'],
+        'Renfort acier': ['Scie', 'Soudage'],
+        'Soufflage': ['Scie', 'Assemblage'],
+        'Moustiquaire': ['Scie', 'Assemblage'],
+        'Moulure': ['Scie', 'Assemblage'],
+        'Croisillons': ['Scie', 'Assemblage'],
+    }
+    _BT_ORDER = ['Cadre', 'Volet', 'Parclose', 'Meneau', 'Renfort acier',
+                 'Soufflage', 'Moustiquaire', 'Moulure', 'Croisillons']
+    _BT_SECTION = {
+        'battant': 'A', 'guillotine': 'GS', 'coulissant': 'CSG,F', 'fixe': 'F',
+        'porte_ext': 'PE', 'porte_int': 'PI', 'porte_patio': 'PP',
+    }
+
+    def _get_bt_data(self):
+        """Prépare les données du bon de travail pour le rapport QWeb :
+        feuilles de production par composante (agrégées depuis les listes de
+        coupe capturées), thermos, étiquettes d'assemblage, validation."""
+        self.ensure_one()
+        fam_labels = dict(FAMILIES)
+
+        def _load(txt, default):
+            try:
+                return json.loads(txt) if txt else default
+            except (ValueError, TypeError):
+                return default
+
+        # Feuilles de production par composante
+        feuilles = []
+        for grp in self._BT_ORDER:
+            rows = []
+            for idx, line in enumerate(self.line_ids, start=1):
+                for c in _load(line.comps_json, []):
+                    if (c.get('grp') or '') == grp:
+                        rows.append({
+                            'item': idx,
+                            'code': c.get('code') or '',
+                            'desc': c.get('desc') or '',
+                            'tiger': c.get('lng'),
+                            'qte': (c.get('qte') or 1) * (line.qty or 1),
+                        })
+            if rows:
+                feuilles.append({
+                    'name': grp.upper(),
+                    'postes': self._BT_POSTES.get(grp, ['Scie']),
+                    'rows': rows,
+                })
+
+        # Thermos (achat)
+        thermos = []
+        for idx, line in enumerate(self.line_ids, start=1):
+            data = _load(line.thermos_json, {})
+            for t in data.get('thermos', []):
+                thermos.append({
+                    'item': idx,
+                    'desc': '%s %s × %s mm (ép. %s)' % (
+                        data.get('glass') or 'Thermos', t.get('w'), t.get('h'),
+                        data.get('ep') or ''),
+                    'qte': (t.get('qte') or 1) * (line.qty or 1),
+                })
+
+        # Étiquettes d'assemblage + validation
+        etiquettes, validation = [], []
+        num = ''.join(ch for ch in (self.name or '') if ch.isdigit()) or '0'
+        for idx, line in enumerate(self.line_ids, start=1):
+            bullets = []
+            for label, val in (('CADRE', line.param_cadre), ('VERRE', line.param_verre),
+                               ('FINITION INT.', line.param_soufflage),
+                               ('QUINCAILLERIE', line.param_quinc),
+                               ('MOUSTIQUAIRE', line.param_moust),
+                               ('COUPE-FROID', line.param_coupe)):
+                if val and val not in ('Aucun', 'Aucune', 'Non'):
+                    bullets.append('%s : %s' % (label, val))
+            etiquettes.append({
+                'item': idx,
+                'commande': self.name or '',
+                'type': fam_labels.get(line.family, line.family),
+                'section': self._BT_SECTION.get(line.family, ''),
+                'width': int(line.width or 0),
+                'height': int(line.height or 0),
+                'family': line.family,
+                'bullets': bullets,
+                'barcode': 'S%s%02dTA' % (num[-4:].zfill(4), idx),
+            })
+            validation.append({
+                'item': idx,
+                'type': fam_labels.get(line.family, line.family),
+                'width': int(line.width or 0),
+                'height': int(line.height or 0),
+                'egress': 'egress' in (line.description or '').lower(),
+            })
+
+        return {'feuilles': feuilles, 'thermos': thermos,
+                'etiquettes': etiquettes, 'validation': validation}
+
 
 class PffConfigurationLine(models.Model):
     _name = 'pff.configuration.line'
@@ -198,6 +299,7 @@ class PffConfigurationLine(models.Model):
     description = fields.Char(string='Désignation')
     config_json = fields.Text(string='Paramètres (JSON)')   # tout l'état du configurateur
     thermos_json = fields.Text(string='Thermos (JSON)')     # verre capturé pour le bon d'achat
+    comps_json = fields.Text(string='Liste de coupe (JSON)')  # pièces capturées pour les feuilles de production
     qty = fields.Integer(string='Qté', default=1)
     price_unit = fields.Float(string='Prix unitaire')
     price_subtotal = fields.Float(string='Sous-total', compute='_compute_subtotal', store=True)

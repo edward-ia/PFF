@@ -819,8 +819,9 @@ ui('valider').addEventListener('click',()=>{
     family:s.family, width:Math.round(s.W), height:Math.round(s.H),
     description:FAMILIES[s.family].fr+' '+Math.round(s.W)+' × '+Math.round(s.H)+' mm',
     qty:it.qty||1, price:priceEstimate(s), config:s,
-    // Thermos capturés ici (calcul déjà fait par derive) → pas de recalcul Python
-    thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})), glass, ep, params };
+    // Thermos + liste de coupe capturés ici (calcul déjà fait par derive) → pas de recalcul Python
+    thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})),
+    comps:dv.comps.map(c=>({grp:c.grp,code:c.code,desc:c.desc,lng:c.lng,qte:c.qte})), glass, ep, params };
   });
   window.parent.postMessage({type:'pff_valider', items}, '*');
 });

@@ -13,6 +13,7 @@
         'views/pff_settings_views.xml',
         'views/crm_lead_views.xml',
         'views/menus.xml',
+        'report/report_pff.xml',
     ],
     'assets': {
         'web.assets_backend': [

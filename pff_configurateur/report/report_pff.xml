@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Action d'impression : Bons de travail (feuilles de production) -->
+    <record id="action_report_pff_bt" model="ir.actions.report">
+        <field name="name">Bons de travail</field>
+        <field name="model">pff.configuration</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pff_configurateur.report_pff_bt</field>
+        <field name="report_file">pff_configurateur.report_pff_bt</field>
+        <field name="binding_model_id" ref="model_pff_configuration"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_pff_bt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="d" t-value="doc._get_bt_data()"/>
+                <t t-set="pcol" t-value="{'Scie':'#E8720C','Poinçon machinage':'#E8720C','Soudage':'#2E9BD6','Sous-ensemble':'#C463C9','Assemblage':'#C463C9','Achat sur commande':'#7A7A7A','Validation':'#059669'}"/>
+                <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
+
+                    <!-- ===== Feuilles de production par composante ===== -->
+                    <t t-foreach="d['feuilles']" t-as="f">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px;">
+                            <div style="font-weight:bold;font-size:13px;">Feuille de production</div>
+                            <div style="text-align:right;font-size:9px;color:#333;">
+                                Commande <span t-esc="doc.name"/> · BT <span t-esc="doc.name"/><br/>
+                                <span t-esc="doc.date_order"/>
+                            </div>
+                        </div>
+                        <div style="border:1px solid #111;">
+                            <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;" t-esc="f['name']"/>
+                            <table style="width:100%;border-collapse:collapse;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid #111;">
+                                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;">COMM/ITEM</td>
+                                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Pièces</td>
+                                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur TIGER</td>
+                                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:center;">Qté</td>
+                                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur</td>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="f['rows']" t-as="r" style="border-bottom:1px solid #d5d5d5;">
+                                        <td style="padding:3px 6px;font-size:9px;white-space:nowrap;"><span t-esc="doc.name"/> <b t-esc="r['item']"/></td>
+                                        <td style="padding:3px 6px;font-size:10px;"><b t-esc="r['code']"/> <span t-esc="r['desc']"/></td>
+                                        <td style="padding:3px 6px;font-size:10px;text-align:right;" t-esc="r['tiger']"/>
+                                        <td style="padding:3px 6px;font-size:10px;text-align:center;" t-esc="r['qte']"/>
+                                        <td style="padding:3px 6px;font-size:10px;text-align:right;" t-esc="r['tiger']"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <span t-foreach="f['postes']" t-as="p"
+                                  t-attf-style="background:{{ pcol.get(p,'#888') }};color:#fff;padding:5px 16px;margin-right:4px;font-weight:bold;font-size:9px;"
+                                  t-esc="p"/>
+                        </div>
+                        <p style="page-break-after:always;"/>
+                    </t>
+
+                    <!-- ===== Thermos (achat sur commande) ===== -->
+                    <t t-if="d['thermos']">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px;">
+                            <div style="font-weight:bold;font-size:13px;">Feuille de production — THERMOS (achat sur commande)</div>
+                            <div style="text-align:right;font-size:9px;color:#333;">Commande <span t-esc="doc.name"/></div>
+                        </div>
+                        <div style="border:1px solid #111;">
+                            <table style="width:100%;border-collapse:collapse;">
+                                <thead><tr style="border-bottom:1px solid #111;">
+                                    <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Description</td>
+                                    <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:center;width:120px;">Qté / Unité</td>
+                                </tr></thead>
+                                <tbody>
+                                    <tr t-foreach="d['thermos']" t-as="t" style="border-bottom:1px solid #d5d5d5;">
+                                        <td style="padding:3px 6px;font-size:10px;">(<span t-esc="doc.name"/>/<span t-esc="t['item']"/>) <span t-esc="t['desc']"/></td>
+                                        <td style="padding:3px 6px;font-size:10px;text-align:center;" t-esc="t['qte']"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <span style="background:#7A7A7A;color:#fff;padding:5px 16px;margin-right:4px;font-weight:bold;font-size:9px;">Achat sur commande</span>
+                            <span style="background:#C463C9;color:#fff;padding:5px 16px;font-weight:bold;font-size:9px;">Assemblage</span>
+                        </div>
+                        <p style="page-break-after:always;"/>
+                    </t>
+
+                    <!-- ===== Étiquettes d'assemblage (1 par item) ===== -->
+                    <t t-foreach="d['etiquettes']" t-as="e">
+                        <div style="text-align:center;font-size:9px;color:#E8720C;font-weight:bold;margin-bottom:2px;">Assemblage — étiquette collée sur la fenêtre (la flèche = sens d'ouverture)</div>
+                        <div style="display:flex;align-items:flex-start;gap:18px;margin-top:8px;">
+                            <div style="width:400px;">
+                                <div style="border:1px solid #111;">
+                                    <div style="border-bottom:1px solid #111;padding:2px 6px;display:flex;justify-content:space-between;align-items:baseline;">
+                                        <span style="font-size:8px;color:#333;"># Commande</span>
+                                        <span style="font-weight:bold;font-size:12px;"><span t-esc="e['commande']"/> \ <span t-esc="e['item']"/></span>
+                                        <span style="font-weight:bold;font-size:12px;" t-esc="doc.name"/>
+                                    </div>
+                                    <div style="border-bottom:1px solid #111;padding:2px 6px;font-size:10px;"><span style="font-size:8px;color:#333;">LIVRÉ À </span><b t-esc="doc.partner_id.name"/></div>
+                                    <div style="border-bottom:1px solid #111;padding:2px 6px;font-size:10px;"><span style="font-size:8px;color:#333;">VENDU À </span><span t-esc="doc.partner_id.name"/></div>
+                                    <div style="border-bottom:1px solid #111;padding:2px 6px;font-size:10px;"><span t-esc="e['type']"/> <span t-if="e['section']">· <span t-esc="e['section']"/></span></div>
+                                    <div style="padding:5px 6px;font-size:10px;">CADRE : <span t-esc="e['width']"/> × <span t-esc="e['height']"/> mm</div>
+                                </div>
+                                <div style="font-size:9px;line-height:1.6;margin-top:6px;">
+                                    <div t-foreach="e['bullets']" t-as="b">- <span t-esc="b"/></div>
+                                </div>
+                                <div style="height:38px;width:200px;margin-top:14px;background:repeating-linear-gradient(90deg,#111 0 2px,#fff 2px 3px,#111 3px 5px,#fff 5px 8px,#111 8px 9px,#fff 9px 12px);"/>
+                                <div style="font-size:11px;letter-spacing:2px;" t-esc="e['barcode']"/>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:26px;font-weight:800;line-height:1.05;">
+                                    <t t-foreach="doc.name" t-as="ch"><span t-esc="ch"/><br/></t>
+                                </div>
+                                <div style="font-size:34px;font-weight:800;margin-top:20px;" t-esc="e['item']"/>
+                            </div>
+                        </div>
+                        <p style="page-break-after:always;"/>
+                    </t>
+
+                    <!-- ===== Validation (contrôle qualité) ===== -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px;">
+                        <div style="font-weight:bold;font-size:13px;">Feuille de validation — Contrôle qualité</div>
+                        <div style="text-align:right;font-size:9px;color:#333;">Commande <span t-esc="doc.name"/></div>
+                    </div>
+                    <div style="border:1px solid #111;">
+                        <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;">VALIDATION — avant expédition</div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead><tr style="border-bottom:1px solid #111;">
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;">Item</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;">Type · dimensions</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Dim. cadre</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Équerrage</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Verre / thermos</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Quincaillerie</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Moustiquaire</td>
+                                <td style="font-weight:bold;font-size:9px;padding:5px 6px;text-align:center;">Egress</td>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="d['validation']" t-as="v" style="border-bottom:1px solid #d5d5d5;">
+                                    <td style="padding:5px 6px;font-size:10px;text-align:center;" t-esc="v['item']"/>
+                                    <td style="padding:5px 6px;font-size:10px;"><span t-esc="v['type']"/> · <span t-esc="v['width']"/> × <span t-esc="v['height']"/></td>
+                                    <td style="padding:5px 6px;text-align:center;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333;"/></td>
+                                    <td style="padding:5px 6px;text-align:center;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333;"/></td>
+                                    <td style="padding:5px 6px;text-align:center;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333;"/></td>
+                                    <td style="padding:5px 6px;text-align:center;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333;"/></td>
+                                    <td style="padding:5px 6px;text-align:center;"><span style="display:inline-block;width:14px;height:14px;border:1.5px solid #333;"/></td>
+                                    <td style="padding:5px 6px;font-size:10px;text-align:center;"><b t-if="v['egress']">OUI ✓</b><span t-if="not v['egress']">—</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex;gap:24px;margin-top:16px;font-size:11px;">
+                        <div style="flex:1;border-top:1px solid #333;padding-top:3px;">Contrôlé par :</div>
+                        <div style="flex:1;border-top:1px solid #333;padding-top:3px;">Date :</div>
+                        <div style="flex:1;border-top:1px solid #333;padding-top:3px;">Signature :</div>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>
