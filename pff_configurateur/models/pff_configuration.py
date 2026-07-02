@@ -66,6 +66,7 @@ class PffConfiguration(models.Model):
             'tag': 'pff_configurator',
             'name': 'Configurateur',
             'params': {'config_id': self.id},
+            'context': {'config_id': self.id},
         }
 
     # --- Phase C : créer un devis dans Ventes ---

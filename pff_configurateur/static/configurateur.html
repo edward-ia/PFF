@@ -44,6 +44,8 @@
   .hint{ position:absolute; bottom:8px; left:10px; font-size:11px; color:#5a6675; background:rgba(255,255,255,.7); padding:4px 8px; border-radius:6px; }
   .price{ position:absolute; top:10px; right:12px; z-index:5; background:rgba(20,24,30,.82); color:#fff; padding:8px 12px; border-radius:8px; font-size:17px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.25); }
   .price small{ font-size:10px; font-weight:500; opacity:.8; }
+  .validbtn{ position:absolute; top:64px; right:12px; z-index:6; width:auto; background:var(--ok); color:#06251a; border:none; padding:9px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .validbtn:hover{ filter:brightness(1.07); }
   .viewbtns{ position:absolute; top:10px; left:12px; z-index:5; display:flex; }
   .vbtn{ width:auto; padding:6px 14px; font-size:12px; background:rgba(255,255,255,.85); color:#2a2f37; border:1px solid #c5ccd4; cursor:pointer; }
   .vbtn:first-child{ border-radius:7px 0 0 7px; } .vbtn:last-child{ border-radius:0 7px 7px 0; border-left:none; }
@@ -191,7 +193,7 @@
   </div>
 
   <div id="stage">
-    <div id="view3d"><div id="viewBtns" class="viewbtns"><button data-v="ext" class="vbtn on">Extérieur</button><button data-v="int" class="vbtn">Intérieur</button></div><div id="price" class="price"></div><div class="hint">Glisser = tourner · molette = zoom · <b>clique sur le produit</b> pour l'ouvrir / fermer</div></div>
+    <div id="view3d"><div id="viewBtns" class="viewbtns"><button data-v="ext" class="vbtn on">Extérieur</button><button data-v="int" class="vbtn">Intérieur</button></div><div id="price" class="price"></div><button id="valider" class="validbtn">✓ Valider la configuration</button><div class="hint">Glisser = tourner · molette = zoom · <b>clique sur le produit</b> pour l'ouvrir / fermer</div></div>
     <div id="bottom">
       <div id="tabs">
         <div class="tab active" data-t="dessin">Vue 2D cotée</div>
@@ -787,6 +789,16 @@ function setView(v){ const cy=(+ui('h').value)*MM/2, d=3.0;
   camera.position.set(v==='int'?-1.4:1.4, cy+0.25, v==='int'?-d:d); controls.target.set(0,cy,0); controls.update();
   document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); }
 ui('viewBtns').addEventListener('click',e=>{ if(e.target.dataset.v) setView(e.target.dataset.v); });
+
+/* ===== VALIDER → renvoie la configuration à Odoo (postMessage) ===== */
+ui('valider').addEventListener('click',()=>{
+  const items=orderItems().map(it=>{ const s=it.s; return {
+    family:s.family, width:Math.round(s.W), height:Math.round(s.H),
+    description:FAMILIES[s.family].fr+' '+Math.round(s.W)+' × '+Math.round(s.H)+' mm',
+    qty:it.qty||1, price:priceEstimate(s), config:s };
+  });
+  window.parent.postMessage({type:'pff_valider', items}, '*');
+});
 
 renderFamOpts(); resize(); refresh(); loop();
 </script>

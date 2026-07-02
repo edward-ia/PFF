@@ -11,6 +11,10 @@
                     <field name="pff_config_count" widget="statinfo" string="Configurations"/>
                 </button>
             </xpath>
+            <xpath expr="//header/button[@name='action_set_won_rainbowman']" position="before">
+                <button name="action_pff_new_configuration" type="object"
+                        string="Nouvelle configuration" class="btn-primary"/>
+            </xpath>
         </field>
     </record>
 </odoo>
