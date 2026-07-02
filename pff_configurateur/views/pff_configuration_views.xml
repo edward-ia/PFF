@@ -11,6 +11,7 @@
                 <field name="date_delivery"/>
                 <field name="partner_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
+                <field name="product_count" optional="show"/>
                 <field name="amount_total" widget="monetary"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="state" widget="badge"
@@ -87,6 +88,26 @@
                                     <field name="price_unit"/>
                                     <field name="price_subtotal" widget="monetary"/>
                                     <field name="currency_id" column_invisible="1"/>
+                                    <!-- Paramètres détaillés : colonnes optionnelles, cachées
+                                         par défaut (bouton « colonnes » de la liste), lecture seule -->
+                                    <field name="param_cadre" optional="hide" readonly="1"/>
+                                    <field name="param_verre" optional="hide" readonly="1"/>
+                                    <field name="param_aspect" optional="hide" readonly="1"/>
+                                    <field name="param_col_ext" optional="hide" readonly="1"/>
+                                    <field name="param_col_int" optional="hide" readonly="1"/>
+                                    <field name="param_moulure" optional="hide" readonly="1"/>
+                                    <field name="param_soufflage" optional="hide" readonly="1"/>
+                                    <field name="param_grilles" optional="hide" readonly="1"/>
+                                    <field name="param_imposte" optional="hide" readonly="1"/>
+                                    <field name="param_quinc" optional="hide" readonly="1"/>
+                                    <field name="param_coupe" optional="hide" readonly="1"/>
+                                    <field name="param_moust" optional="hide" readonly="1"/>
+                                    <field name="param_sections" optional="hide" readonly="1"/>
+                                    <field name="param_ouvrant" optional="hide" readonly="1"/>
+                                    <field name="param_vantaux" optional="hide" readonly="1"/>
+                                    <field name="param_panneau" optional="hide" readonly="1"/>
+                                    <field name="param_sidelights" optional="hide" readonly="1"/>
+                                    <field name="param_unit" optional="hide" readonly="1"/>
                                     <button name="action_edit_line" type="object"
                                             string="Reprendre" icon="fa-cubes"
                                             title="Reprendre la configuration de ce produit"/>

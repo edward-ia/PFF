@@ -796,12 +796,31 @@ ui('valider').addEventListener('click',()=>{
     const tint={clair:'Clair',bronze:'Bronze',gray:'Gris'}[s.vTint]||s.vTint||'';
     const glass=(s.vType==='triple'?'Triple':'Double 1')+' Low-E Argon '+tint+(s.aspect==='depoli'?' (dépoli)':'');
     const ep=(VERRE[s.vType]||{}).ep||'';
+    // Paramètres lisibles pour les colonnes optionnelles (filtrés par famille)
+    const isDoorExt=s.family==='porte_ext', isBattant=s.family==='battant', isSlide=(s.family==='coulissant'||s.family==='porte_patio');
+    const hasOuvrant=isBattant||s.family==='porte_int'||isDoorExt;
+    const params={
+      unit:{mm:'mm',frac:'pouces (fraction)',dec:'pouces (décimal)',ftin:'pied-pouce'}[s.unit]||s.unit,
+      cadre:s.cadreNom||'', verre:glass,
+      aspect:s.aspect==='depoli'?'Dépoli / givré':'Transparent',
+      col_ext:(COLORS[s.colExt]||{}).fr||s.colExt, col_int:(COLORS[s.colInt]||{}).fr||s.colInt,
+      moulure:{none:'Aucune','1':'Brique 1″','1.5':'Brique 1½″','2':'Brique 2″',j:'J-trim (vinyle)'}[s.moulure]||s.moulure,
+      soufflage:s.soufflage==='none'?'Aucun':s.soufflage,
+      grilles:{none:'Aucun',colonial:'Carrés (colonial)',prairie:'Prairie',croix:'Croix centrale'}[s.grilles]||s.grilles,
+      imposte:(s.imposte&&s.imposte!=='none')?('Fixe '+s.imposteH+' mm'):'Aucune',
+      quinc:s.quinc, coupe:s.coupe, moust:s.moust?'Oui':'Non',
+      sections:isSlide?String(s.sections||''):'',
+      ouvrant:hasOuvrant?({G:'Tirant gauche',D:'Tirant droit'}[s.ouvrant]||''):'',
+      vantaux:isBattant?(s.vantaux===2?'2 (à la française)':'1 vantail'):'',
+      panneau:isDoorExt?({plein:'Pleine',mi:'Mi-vitrée',vitre:'Pleine vitre',deco:'Décoratif'}[s.panneau]||''):'',
+      sidelights:isDoorExt?({none:'Aucun',gauche:'Gauche',droite:'Droite',deux:'Deux côtés'}[s.sidelights]||''):'',
+    };
     return {
     family:s.family, width:Math.round(s.W), height:Math.round(s.H),
     description:FAMILIES[s.family].fr+' '+Math.round(s.W)+' × '+Math.round(s.H)+' mm',
     qty:it.qty||1, price:priceEstimate(s), config:s,
     // Thermos capturés ici (calcul déjà fait par derive) → pas de recalcul Python
-    thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})), glass, ep };
+    thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})), glass, ep, params };
   });
   window.parent.postMessage({type:'pff_valider', items}, '*');
 });

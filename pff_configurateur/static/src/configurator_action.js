@@ -16,7 +16,7 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=6";
+        this.src = "/pff_configurateur/static/configurateur.html?v=7";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »
@@ -88,6 +88,18 @@ export class PffConfigurator extends Component {
                             thermos: d.thermos || [],
                         }),
                     };
+                    // Paramètres détaillés → colonnes optionnelles de la liste.
+                    // Liste blanche : un param inconnu envoyé par le configurateur
+                    // est ignoré (pas de crash au create).
+                    const P = d.params || {};
+                    [
+                        "unit", "cadre", "verre", "aspect", "col_ext", "col_int",
+                        "moulure", "soufflage", "grilles", "imposte", "quinc",
+                        "coupe", "moust", "sections", "ouvrant", "vantaux",
+                        "panneau", "sidelights",
+                    ].forEach((k) => {
+                        v["param_" + k] = P[k] == null ? "" : String(P[k]);
+                    });
                     // Édition d'une ligne précise : on garde sa position dans la liste.
                     if (this.lineId && this.editSequence !== false && this.editSequence != null) {
                         v.sequence = this.editSequence;

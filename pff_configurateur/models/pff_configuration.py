@@ -35,6 +35,8 @@ class PffConfiguration(models.Model):
     currency_id = fields.Many2one('res.currency',
                                   default=lambda self: self.env.company.currency_id)
     amount_total = fields.Monetary(string='Total', compute='_compute_amount_total', store=True)
+    product_count = fields.Integer(string='Nb de produits',
+                                   compute='_compute_product_count', store=True)
     sale_order_id = fields.Many2one('sale.order', string='Devis', readonly=True, copy=False)
     purchase_order_id = fields.Many2one('purchase.order', string="Bon d'achat verre",
                                         readonly=True, copy=False)
@@ -51,6 +53,11 @@ class PffConfiguration(models.Model):
     def _compute_amount_total(self):
         for rec in self:
             rec.amount_total = sum(rec.line_ids.mapped('price_subtotal'))
+
+    @api.depends('line_ids')
+    def _compute_product_count(self):
+        for rec in self:
+            rec.product_count = len(rec.line_ids)
 
     # --- Statuts ---
     def action_production(self):
@@ -195,6 +202,28 @@ class PffConfigurationLine(models.Model):
     price_unit = fields.Float(string='Prix unitaire')
     price_subtotal = fields.Float(string='Sous-total', compute='_compute_subtotal', store=True)
     currency_id = fields.Many2one(related='configuration_id.currency_id')
+
+    # --- Paramètres détaillés (libellés lisibles remplis par le configurateur) ---
+    # Copies dénormalisées de config_json, uniquement pour l'affichage en
+    # colonnes optionnelles dans la liste. Source de vérité = config_json.
+    param_unit = fields.Char(string="Unité")
+    param_cadre = fields.Char(string="Cadre")
+    param_verre = fields.Char(string="Verre / Thermos")
+    param_aspect = fields.Char(string="Aspect du verre")
+    param_col_ext = fields.Char(string="Couleur ext.")
+    param_col_int = fields.Char(string="Couleur int.")
+    param_moulure = fields.Char(string="Moulure ext.")
+    param_soufflage = fields.Char(string="Soufflage int.")
+    param_grilles = fields.Char(string="Croisillons")
+    param_imposte = fields.Char(string="Imposte")
+    param_quinc = fields.Char(string="Quincaillerie")
+    param_coupe = fields.Char(string="Coupe-froid")
+    param_moust = fields.Char(string="Moustiquaire")
+    param_sections = fields.Char(string="Sections")
+    param_ouvrant = fields.Char(string="Sens d'ouverture")
+    param_vantaux = fields.Char(string="Vantaux")
+    param_panneau = fields.Char(string="Type de panneau")
+    param_sidelights = fields.Char(string="Verres latéraux")
 
     @api.depends('qty', 'price_unit')
     def _compute_subtotal(self):
