@@ -32,6 +32,7 @@
   .val { color:var(--accent); font-weight:600; }
   input[type=range]{ width:100%; accent-color:var(--accent); }
   select,button,input[type=number]{ width:100%; padding:6px 7px; background:#1b1f25; color:var(--txt); border:1px solid var(--line); border-radius:6px; font-size:12px; }
+  input.numin{ width:96px; margin:4px 0 2px; padding:4px 7px; font-size:12px; }   /* champ de saisie jumelé au slider */
   .two{ display:flex; gap:8px; } .two>*{ flex:1; }
   .help{ display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:1px solid var(--muted); color:var(--muted); font-size:9px; font-weight:700; cursor:help; margin-left:5px; vertical-align:middle; }
   .help:hover{ border-color:var(--accent); color:var(--accent); }
@@ -441,7 +442,8 @@ const wall=new THREE.Mesh(new THREE.PlaneGeometry(40,20),new THREE.MeshStandardM
 const root=new THREE.Group(); scene.add(root);
 let CUR=root, SASHES=[], GRILLE='none', GLW=0.62, GLH=0.46;   // CUR=groupe courant ; SASHES=ouvrants ; GRILLE=croisillons ; GLW/GLH=fractions vitrage porte
 
-const FW=0.06,DEPTH=0.10,GT=0.018,MM=0.001;
+const FW=0.06,GT=0.018,MM=0.001; let DEPTH=0.143, FLUSH=false, CFM=null;   // DEPTH = profondeur réelle du cadre (fixée par build3D selon le profilé) ; FLUSH = style affleurant ; CFM = matériau coupe-froid
+function cadreDepth(nom){ const m=(nom||'').match(/(\d+)\s+(\d+)\/(\d+)/); if(m) return ((+m[1])+(+m[2])/(+m[3]))*0.0254; const m2=(nom||'').match(/(\d+(?:\.\d+)?)/); return m2?(+m2[1])*0.0254:0.143; }   // « 5 5/8 » → 0.143 m
 function frameMat(col){ const c=COLORS[col]||COLORS.white; return new THREE.MeshPhysicalMaterial({color:c.c,roughness:c.r,metalness:0,clearcoat:.5,clearcoatRoughness:.3}); }
 function glassMat(s){ const g=VERRE[s.vType].tint[s.vTint];
   if(s.aspect==='depoli') return new THREE.MeshPhysicalMaterial({color:0xeef2f3,roughness:.85,transmission:.65,thickness:.04,ior:1.4,transparent:true,opacity:.9,envMapIntensity:.6}); // dépoli / givré
@@ -453,9 +455,9 @@ let HM=steelMat, FMext, FMint, GM;
 function box(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
 function frameRect(cx,cy,w,h,m){
   box(w,FW,DEPTH,m,cx,cy+h/2-FW/2,0); box(w,FW,DEPTH,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,DEPTH,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,DEPTH,m,cx+w/2-FW/2,cy,0);
-  // baguette de vitrage (relief autour de la vitre, côté intérieur) — aspect profilé PVC
-  const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
-  box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
+  // baguette de vitrage (relief autour de la vitre, côté intérieur) — aspect profilé PVC ; le cadre « Flush » (affleurant) est plat, sans ce relief
+  if(!FLUSH){ const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
+    box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb); }
 }
 function lever(x,y,z,m,side){ m=m||HM; side=side||-1; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+side*0.012); }   // poignée bec-de-cane — side=-1 saillie INTÉRIEUR (défaut), +1 EXTÉRIEUR
 function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant/auvent) — saillie côté INTÉRIEUR (-z) ; renvoie le groupe bras (tourne à l'ouverture)
@@ -509,6 +511,7 @@ function soufflageInt(s){ if(s.soufflage==='none')return; const W=s.W*MM,H=s.H*M
 
 function build3D(s){
   clearRoot(); FMext=frameMat(s.colExt); FMint=frameMat(s.colInt); GM=glassMat(s); HM=s.quinc.startsWith('Stainless')?steelMat:whiteMat;
+  DEPTH=cadreDepth(s.cadreNom); FLUSH=/flush/i.test(s.cadreNom||''); CFM=new THREE.MeshStandardMaterial({color:s.coupe==='Noir'?0x1c1c1c:0x8b9196,roughness:.9});   // cadre → profondeur réelle + style flush ; coupe-froid → matériau coloré
   const fam=FAMILIES[s.family], W=s.W*MM, H=s.H*MM, cy=H/2, openRight=(s.ouvrant!=='G'); GRILLE=s.grilles||'none'; GLW=s.glassW||0.62; GLH=s.glassH||0.46;
   if(fam.door){
     const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux';
@@ -541,6 +544,11 @@ function build3D(s){
     if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
+  if(CFM){ const bw=0.011, zc=DEPTH/2-0.03, iw=W-2*FW-0.006, ih=H-2*FW-0.006;   // coupe-froid : liseré périphérique visible, couleur choisie
+    box(iw,bw,0.008,CFM,0,cy+ih/2,zc); box(iw,bw,0.008,CFM,0,cy-ih/2,zc); box(bw,ih,0.008,CFM,-iw/2,cy,zc); box(bw,ih,0.008,CFM,iw/2,cy,zc); }
+  if(s.moust && (s.family==='battant'||s.family==='coulissant'||s.family==='porte_patio')){   // moustiquaire visible (guillotine gérée dans sa branche) — battant = côté intérieur, coulissant/patio = extérieur
+    const zs=s.family==='battant'?(-DEPTH/2-0.02):(DEPTH/2+0.02);
+    box(W-2*FW,H-2*FW,0.004,screenMat,0,cy,zs); }
   if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM; let ibase=W, icx=0, ftop=H;   // imposte fixe au-dessus (100% = pleine largeur)
     if(fam.door){ const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux', tot=W+(hasL?sl:0)+(hasR?sl:0), doorCx=-tot/2+(hasL?sl:0)+W/2;
       ftop=H+FW/2;   // le chambranle de porte dépasse de FW/2
@@ -739,6 +747,7 @@ function renderFamOpts(){
   bx.innerHTML=h;
   ['ouvrant','panneau','sidelights','vantaux','glassW','glassH','sensOuv','imposteSpan'].forEach(id=>ui(id)?.addEventListener('input',refresh));
   if(ui('sections')){ renderOpenSecs(); ui('sections').addEventListener('change',()=>{ renderOpenSecs(); refresh(); }); }
+  pairSliders();   // jumelle les sliders (dont Vitrage L/H recréés ici) à leur champ de saisie
 }
 function syncOpenSecs(){ const wrap=ui('openSecs'); if(!wrap) return;   // le sens n'est actif que si la section est ouvrante
   wrap.querySelectorAll('.osc').forEach((cb,i)=>{ const sel=wrap.querySelector(`.osd[data-i="${i}"]`); if(sel) sel.disabled=!cb.checked; }); }
@@ -768,7 +777,22 @@ const DIMS={ porte_ext:[914,2134], porte_patio:[1829,2032], battant:[610,1219], 
 function applyDefaults(){ const d=DIMS[ui('family').value]; if(d){ ui('w').value=d[0]; ui('h').value=d[1]; } }
 
 /* ===== RAFRAÎCHISSEMENT ===== */
-function refresh(){ const s=state(); ui('wLbl').textContent=fmt(s.W); ui('hLbl').textContent=fmt(s.H); if(ui('impHLbl')) ui('impHLbl').textContent=fmt(s.imposteH); if(ui('impWLbl')) ui('impWLbl').textContent=Math.round(s.imposteW*100)+' %'; build3D(s); renderTab(); updatePrice(); }
+function refresh(){ const s=state(); ui('wLbl').textContent=fmt(s.W); ui('hLbl').textContent=fmt(s.H); if(ui('impHLbl')) ui('impHLbl').textContent=fmt(s.imposteH); if(ui('impWLbl')) ui('impWLbl').textContent=Math.round(s.imposteW*100)+' %'; build3D(s); renderTab(); updatePrice(); updateNums(); }
+/* ===== CHAMPS DE SAISIE JUMELÉS AUX SLIDERS (taper la mesure directement) ===== */
+function sliderToNum(r){ const num=ui(r.id+'Num'); if(!num||num===document.activeElement) return;
+  if(r.dataset.pct) num.value=Math.round(+r.value*100);
+  else { const u=ui('unit').value; num.value = u==='mm'?Math.round(+r.value):+((+r.value/25.4).toFixed(2)); } }
+function updateNums(){ document.querySelectorAll('input[type=range]').forEach(sliderToNum); }
+function pairSliders(){ document.querySelectorAll('input[type=range]').forEach(r=>{
+  if(r.dataset.paired) return; r.dataset.paired='1';
+  if(['imposteW','glassW','glassH'].includes(r.id)) r.dataset.pct='1';
+  const num=document.createElement('input'); num.type='number'; num.className='numin'; num.id=r.id+'Num'; num.step=r.dataset.pct?'1':'1';
+  r.insertAdjacentElement('afterend',num);
+  num.addEventListener('input',()=>{ let v=parseFloat(num.value); if(isNaN(v))return;
+    if(r.dataset.pct){ r.value=Math.min(+r.max,Math.max(+r.min,v/100)); }
+    else { const u=ui('unit').value; let mm=u==='mm'?v:v*25.4; r.value=Math.min(+r.max,Math.max(+r.min,mm)); }
+    r.dispatchEvent(new Event('input',{bubbles:true})); });
+  r.addEventListener('input',()=>sliderToNum(r)); sliderToNum(r); }); }
 ['family','w','h','unit','cadre','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
 ui('tabs').addEventListener('click',e=>{ if(!e.target.dataset.t)return; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); e.target.classList.add('active'); TAB=e.target.dataset.t; renderTab(); });
 ui('addItem').addEventListener('click',addToOrder);
