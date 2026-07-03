@@ -135,7 +135,7 @@ class PffConfiguration(models.Model):
         if not product:
             return False
         po_lines = []
-        for line in self.line_ids:
+        for item_no, line in enumerate(self.line_ids, 1):
             if not line.thermos_json:
                 continue
             try:
@@ -144,11 +144,12 @@ class PffConfiguration(models.Model):
                 continue
             glass = data.get('glass') or 'Thermos'
             ep = data.get('ep') or ''
+            ep_s = ('%smm' % ep) if (ep and 'mm' not in str(ep)) else (ep or '')
             for t in data.get('thermos', []):
                 qty = (t.get('qte') or 1) * (line.qty or 1)
-                name = "%s — %s × %s mm%s" % (
-                    glass, t.get('w'), t.get('h'),
-                    (' (ép. %s)' % ep) if ep else '',
+                # Format Fusion : (commande/item) verre (L X H) entretoise, Epais Total.
+                name = "(%s/%s) %s (%s X %s) Technoform Noir, Epais Total: %s." % (
+                    self.name or '', item_no, glass, t.get('w'), t.get('h'), ep_s,
                 )
                 # product_uom / date_planned / price_unit : laissés aux calculs
                 # Odoo (dérivés du produit) pour rester compatible Odoo 19.

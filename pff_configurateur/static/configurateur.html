@@ -295,9 +295,10 @@ function state(){
 }
 
 /* ===== COUCHE 4 — COMPOSANTS DÉRIVÉS ===== */
+function usesCoupeFroid(fam){ return !['coulissant','guillotine','fixe'].includes(fam); }   // coupe-froid à compression : battant/auvent/portes ; PAS les familles qui glissent ni le fixe (joint à brosse ou scellé au vitrage)
 function accessoires(s){
   const a=[],R=Math.round,P=2*(s.W+s.H);
-  a.push({grp:'Accessoire',code:'CF-'+s.coupe,desc:`Coupe-froid ${s.coupe}`,lng:R(P),qte:1});
+  if(usesCoupeFroid(s.family)) a.push({grp:'Accessoire',code:'CF-'+s.coupe,desc:`Coupe-froid ${s.coupe}`,lng:R(P),qte:1});
   if(FAMILIES[s.family].hw!=='aucune') a.push({grp:'Accessoire',code:'QUINC',desc:s.quinc+' · '+FAMILIES[s.family].hw,lng:0,qte:1});   // pas de quincaillerie sur un fixe
   if(s.moulure!=='none') a.push({grp:'Moulure',code:'MOUL-'+s.moulure,desc:s.moulure==='j'?'J-trim vinyle':'Moulure brique '+s.moulure+'″',lng:R(P),qte:1});
   // Soufflage intérieur — cadre 4 pièces (2×L + 2×H), code réel 9876-13100
@@ -412,16 +413,14 @@ ${extra?extra+'\n':''}VERRE   : ${s.vType==='triple'?'Triple':'Double 1'} Low-E 
 COULEUR : Ext. ${ce.fr}${s.colExt!==s.colInt?` / Int. ${ci.fr} (bicolore)`:''}
 MOULURE : ${s.moulure==='none'?'Aucune':s.moulure==='j'?'J-trim':'Brique '+s.moulure+'″'}
 SOUFFLAGE INT. : ${s.soufflage==='none'?'Aucun':s.soufflage+'″'}${optFr}
-QUINCAILLERIE : ${s.quinc} · ${f.hw}
-COUPE-FROID : ${s.coupe}${s.moust?'\nMOUSTIQUAIRE : Fibre de verre':''}`;
+QUINCAILLERIE : ${s.quinc} · ${f.hw}${usesCoupeFroid(s.family)?'\nCOUPE-FROID : '+s.coupe:''}${s.moust?'\nMOUSTIQUAIRE : Fibre de verre':''}`;
   const en=`PRODUCT : ${f.en}${door?'':' / '+s.sections+' section(s)'}
 FRAME   : ${door?'Door frame':s.cadreNom} (${dim})
 GLASS   : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Black (${V.ep})
 COLOR   : Ext. ${ce.en}${s.colExt!==s.colInt?` / Int. ${ci.en} (two-tone)`:''}
 BRICKMOULD : ${s.moulure==='none'?'None':s.moulure==='j'?'J-trim':'Brick '+s.moulure+'″'}
 JAMB EXT. : ${s.soufflage==='none'?'None':s.soufflage+'″'}${optEn}
-HARDWARE : ${s.quinc} · ${f.hw}
-WEATHERSTRIP : ${s.coupe}${s.moust?'\nSCREEN : Fiberglass':''}`;
+HARDWARE : ${s.quinc} · ${f.hw}${usesCoupeFroid(s.family)?'\nWEATHERSTRIP : '+s.coupe:''}${s.moust?'\nSCREEN : Fiberglass':''}`;
   return {fr,en};
 }
 
@@ -544,7 +543,7 @@ function build3D(s){
     if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
-  if(CFM){ const bw=0.011, zc=DEPTH/2-0.03, iw=W-2*FW-0.006, ih=H-2*FW-0.006;   // coupe-froid : liseré périphérique visible, couleur choisie
+  if(CFM && usesCoupeFroid(s.family)){ const bw=0.011, zc=DEPTH/2-0.03, iw=W-2*FW-0.006, ih=H-2*FW-0.006;   // coupe-froid : liseré périphérique visible (pas sur coulissant/guillotine/fixe)
     box(iw,bw,0.008,CFM,0,cy+ih/2,zc); box(iw,bw,0.008,CFM,0,cy-ih/2,zc); box(bw,ih,0.008,CFM,-iw/2,cy,zc); box(bw,ih,0.008,CFM,iw/2,cy,zc); }
   if(s.moust && (s.family==='battant'||s.family==='coulissant'||s.family==='porte_patio')){   // moustiquaire visible (guillotine gérée dans sa branche) — battant = côté intérieur, coulissant/patio = extérieur
     const zs=s.family==='battant'?(-DEPTH/2-0.02):(DEPTH/2+0.02);
@@ -660,7 +659,7 @@ function etqCard(it,idx){
     meneauTxt(s)?`- MENEAUX: ${meneauTxt(s)}`:null,
     `- PIÈCES: ${PIECES_FAM[s.family]||'—'}`,
     s.moust?'- MOUSTIQUAIRE : Fibre de verre':null,
-    `- COUPE-FROID : ${s.coupe}`,
+    usesCoupeFroid(s.family)?`- COUPE-FROID : ${s.coupe}`:null,
     `- QUINCAILLERIE : ${s.quinc}`,
   ].filter(Boolean).join('\n');
   return `<div class="etq2">

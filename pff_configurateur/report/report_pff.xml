@@ -161,4 +161,84 @@
         </t>
     </template>
 
+    <!-- ============================================================= -->
+    <!-- Bon d'achat verre — reprend le FORMAT Fusion (« Commande achat ») -->
+    <!-- Données 100% dynamiques : n° = po.name, date = maintenant,        -->
+    <!-- Envoyé par = utilisateur, fournisseur + adresse = fiche réelle.   -->
+    <!-- ============================================================= -->
+    <record id="action_report_pff_po" model="ir.actions.report">
+        <field name="name">Bon d'achat (Fusion)</field>
+        <field name="model">purchase.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pff_configurateur.report_pff_po</field>
+        <field name="report_file">pff_configurateur.report_pff_po</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_pff_po">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="po">
+                <t t-set="tot" t-value="sum(po.order_line.mapped('product_qty'))"/>
+                <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12px;">
+
+                    <!-- ===== En-tête ===== -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div style="width:33%;">
+                            <img t-if="po.company_id.logo" t-att-src="image_data_uri(po.company_id.logo)" style="max-height:56px;max-width:230px;"/>
+                            <div t-else="" style="font-weight:bold;font-size:17px;color:#0a63a8;">PORTES ET FENÊTRES FUSION</div>
+                        </div>
+                        <div style="width:34%;text-align:center;padding-top:8px;font-size:15px;">
+                            Commande achat # <span style="font-weight:bold;" t-esc="po.name"/>
+                        </div>
+                        <div style="width:33%;text-align:right;font-size:10px;color:#333;">
+                            <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>
+                            Page: 1<br/>
+                            Envoyé par: <span t-esc="(po.user_id or po.create_uid).name"/>
+                        </div>
+                    </div>
+
+                    <!-- ===== Dates + fournisseur ===== -->
+                    <div style="margin:16px 0 0 34%;font-size:12px;">
+                        Date achat :&#160;&#160;<span t-esc="po.date_order.strftime('%Y-%m-%d') if po.date_order else ''"/><br/>
+                        Date requise :&#160;<span t-esc="po.date_planned.strftime('%Y-%m-%d') if po.date_planned else ''"/>
+                    </div>
+                    <div style="margin:14px 0 0 34%;font-size:12px;line-height:1.35;">
+                        <div style="font-weight:bold;" t-esc="po.partner_id.name"/>
+                        <div t-if="po.partner_id.street" t-esc="po.partner_id.street"/>
+                        <div>
+                            <span t-esc="po.partner_id.city or ''"/>
+                            <t t-if="po.partner_id.state_id"> (<span t-esc="po.partner_id.state_id.name"/>)</t>
+                            <span t-esc="po.partner_id.zip or ''"/>
+                        </div>
+                    </div>
+
+                    <!-- ===== Tableau des lignes ===== -->
+                    <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;">
+                        <thead>
+                            <tr style="border-top:1px solid #000;border-bottom:1px solid #000;">
+                                <th style="text-align:left;padding:6px 8px;">Description</th>
+                                <th style="text-align:right;padding:6px 8px;width:130px;">Qte / Unité</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="po.order_line" t-as="l" t-att-style="'background:#ececec;' if l_index % 2 == 0 else ''">
+                                <td style="padding:6px 8px;" t-esc="l.name"/>
+                                <td style="padding:6px 8px;text-align:right;" t-esc="int(l.product_qty)"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style="border-top:1px solid #000;"/>
+
+                    <!-- ===== Commentaire + total ===== -->
+                    <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;">
+                        <div><span style="font-weight:bold;">Commentaire:</span> Production (<span t-esc="po.origin or ''"/>)</div>
+                        <div style="text-align:center;padding-right:60px;"><span style="font-weight:bold;">Total</span>&#160;&#160;&#160;&#160;<span t-esc="int(tot)"/></div>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+    </template>
+
 </odoo>
