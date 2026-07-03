@@ -180,7 +180,7 @@
       <select id="quinc"><option>Stainless (garantie à vie)</option><option>Standard blanc</option></select>
       <label>Coupe-froid <span class="help" title="Joint d'étanchéité périphérique (couleur). Empêche l'infiltration d'air/eau. Génère une ligne de composant.">?</span></label>
       <select id="coupe"><option>Gris</option><option>Noir</option></select>
-      <label><input type="checkbox" id="moust" checked style="width:auto"> Moustiquaire fibre de verre <span class="help" title="Treillis amovible en fibre de verre. Indispensable au Québec. Génère une ligne de composant + fabrication différée possible.">?</span></label>
+      <label id="moustRow"><input type="checkbox" id="moust" checked style="width:auto"> Moustiquaire fibre de verre <span class="help" title="Treillis amovible en fibre de verre. Indispensable au Québec. Génère une ligne de composant + fabrication différée possible.">?</span></label>
     </div>
 
     <div class="grp" style="min-width:250px">
@@ -295,7 +295,8 @@ function state(){
 }
 
 /* ===== COUCHE 4 — COMPOSANTS DÉRIVÉS ===== */
-function usesCoupeFroid(fam){ return !['coulissant','guillotine','fixe'].includes(fam); }   // coupe-froid à compression : battant/auvent/portes ; PAS les familles qui glissent ni le fixe (joint à brosse ou scellé au vitrage)
+function usesCoupeFroid(fam){ return !['coulissant','guillotine','fixe','porte_patio'].includes(fam); }   // coupe-froid à COMPRESSION : battant/auvent/porte d'entrée (charnières) ; PAS ce qui GLISSE (coulissant/guillotine/PATIO) ni le fixe
+function usesScreen(fam){ return ['battant','coulissant','guillotine','porte_patio'].includes(fam); }   // moustiquaire : seulement les familles avec un ouvrant grillageable (pas fixe ni porte d'entrée)
 function accessoires(s){
   const a=[],R=Math.round,P=2*(s.W+s.H);
   if(usesCoupeFroid(s.family)) a.push({grp:'Accessoire',code:'CF-'+s.coupe,desc:`Coupe-froid ${s.coupe}`,lng:R(P),qte:1});
@@ -746,6 +747,7 @@ function renderFamOpts(){
   bx.innerHTML=h;
   ['ouvrant','panneau','sidelights','vantaux','glassW','glassH','sensOuv','imposteSpan'].forEach(id=>ui(id)?.addEventListener('input',refresh));
   if(ui('sections')){ renderOpenSecs(); ui('sections').addEventListener('change',()=>{ renderOpenSecs(); refresh(); }); }
+  if(ui('moustRow')) ui('moustRow').style.display=usesScreen(f)?'':'none';   // moustiquaire visible seulement sur les familles grillageables
   pairSliders();   // jumelle les sliders (dont Vitrage L/H recréés ici) à leur champ de saisie
 }
 function syncOpenSecs(){ const wrap=ui('openSecs'); if(!wrap) return;   // le sens n'est actif que si la section est ouvrante
