@@ -1,0 +1,346 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Feuilles de production Fusion — bons de travail</title>
+<style>
+  @page { size: Letter; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#111; font-size:11px; margin:0; }
+  .sheet { page-break-after: always; }
+  .sheet:last-child { page-break-after:auto; }
+
+  .fp-hd { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:4px; }
+  .fp-hd .t { font-weight:700; font-size:13px; }
+  .fp-hd .r { text-align:right; font-size:9px; color:#333; line-height:1.4; }
+
+  .box { border:1px solid #111; }
+  .box .title { font-weight:700; font-size:12px; padding:4px 8px; border-bottom:1px solid #111; }
+
+  table { width:100%; border-collapse:collapse; }
+  thead td { font-weight:700; font-size:9px; border-bottom:1px solid #111; padding:4px 6px; vertical-align:bottom; }
+  tbody td { padding:3px 6px; font-size:10px; vertical-align:top; border-bottom:1px solid #d5d5d5; }
+  .comm { white-space:nowrap; font-size:9px; }
+  .comm .it { display:inline-block; min-width:14px; text-align:center; font-weight:700; }
+  .pc .code { font-weight:700; }
+  .pc .case { font-size:8px; color:#555; }
+  td.n { text-align:right; white-space:nowrap; }
+  td.c { text-align:center; }
+  .col-t { width:70px; } .col-q { width:34px; } .col-l { width:64px; }
+
+  .chev { margin-top:10px; }
+  .chev span { display:inline-block; padding:5px 22px 5px 14px; margin-right:-6px; color:#fff; font-weight:700; font-size:10px;
+               clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%); }
+  .chev span:first-child { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); }
+  .cs{background:#E8720C;} .cp{background:#E8720C;} .cso{background:#2E9BD6;} .cse{background:#C463C9;} .cas{background:#C463C9;} .cac{background:#7A7A7A;} .off{background:#cfcfcf;color:#fff;}
+  .cap { font-size:9px; color:#E8720C; text-align:center; font-weight:700; margin-bottom:2px; }
+
+  /* Étiquette d'assemblage (fidèle Fusion) */
+  .etq-wrap { display:flex; align-items:flex-start; gap:18px; margin-top:8px; }
+  .etq-left { width:400px; }
+  .etq-box { border:1px solid #111; }
+  .etq-r { border-bottom:1px solid #111; padding:2px 6px; font-size:10px; }
+  .etq-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .etq-top .lbl { font-size:8px; color:#333; }
+  .etq-top .no { font-weight:700; font-size:12px; }
+  .etq-ab .k { font-size:8px; color:#333; display:inline-block; width:46px; }
+  .etq-ab .v { font-weight:700; }
+  .etq-draw { display:flex; gap:10px; align-items:center; padding:5px 6px; }
+  .etq-draw .dim { font-size:10px; }
+  .etq-bullets { font-size:9px; line-height:1.6; margin-top:6px; }
+  .etq-vnum { font-size:30px; font-weight:800; line-height:1.05; text-align:center; }
+  .etq-item { font-size:34px; font-weight:800; text-align:center; margin-top:28px; }
+  .bc2 { height:38px; width:200px; margin-top:14px;
+         background:repeating-linear-gradient(90deg,#111 0 2px,#fff 2px 3px,#111 3px 5px,#fff 5px 8px,#111 8px 9px,#fff 9px 12px); }
+  .bc2-lbl { font-size:11px; letter-spacing:2px; }
+
+  /* Validation */
+  .val td { padding:5px 6px; }
+  .val .chk { display:inline-block; width:14px; height:14px; border:1.5px solid #333; }
+  .val-sign { display:flex; gap:24px; margin-top:16px; font-size:11px; }
+  .val-sign div { flex:1; border-top:1px solid #333; padding-top:3px; }
+</style></head>
+<body>
+
+<!-- ===== CADRE ===== -->
+<div class="sheet">
+  <div class="cap">Bon de travail pour les cadres (scie → soudage)</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 1</div></div>
+  <div class="box"><div class="title">CADRE</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9800-21383</span> (L) CADRE BATTANT 5 5/8<br><span class="case">CaseC 01 CaseC 02</span></td><td class="n">920,4</td><td class="c">4</td><td class="n">920,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9800-21383</span> (H) CADRE BATTANT 5 5/8<br><span class="case">CaseC 01 CaseC 02</span></td><td class="n">590,2</td><td class="c">4</td><td class="n">590,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9920I-20582</span> (L) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 06</span></td><td class="n">1530</td><td class="c">2</td><td class="n">1530</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9920I-20582</span> (H) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 03</span></td><td class="n">1326,8</td><td class="c">2</td><td class="n">1326,8</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9920I-20582</span> (L) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 04 CaseC 05</span></td><td class="n">1225,2</td><td class="c">4</td><td class="n">1225,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9920I-20582</span> (L) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 03</span></td><td class="n">920,4</td><td class="c">2</td><td class="n">920,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9920I-20582</span> (H) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 04 CaseC 05</span></td><td class="n">920,4</td><td class="c">4</td><td class="n">920,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9920I-20582</span> (H) CADRE 5 5/8 - Coulissant SIMPLE - Blanc<br><span class="case">CaseC 06</span></td><td class="n">920,4</td><td class="c">2</td><td class="n">920,4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cp">Poinçon machinage</span><span class="cso">Soudage</span></div>
+</div>
+
+<!-- ===== VOLET ===== -->
+<div class="sheet">
+  <div class="cap">Bon de travail pour les volets à souder</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 2</div></div>
+  <div class="box"><div class="title">VOLET</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9601XI-21343</span> (L) VOLET BATTANT CONTEMPORAIN COUPE-FROID BALAI<br><span class="case">CaseV 01 CaseV 02</span></td><td class="n">877,4</td><td class="c">4</td><td class="n">877,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9601XI-21343</span> (H) VOLET BATTANT CONTEMPORAIN COUPE-FROID BALAI<br><span class="case">CaseV 01 CaseV 02</span></td><td class="n">547,2</td><td class="c">4</td><td class="n">547,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9922-19298</span> (L) VOLET Coul/Guil (Ouv.G)<br><span class="case">CaseV 06</span></td><td class="n">744,5</td><td class="c">2</td><td class="n">744,5</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9922-19298</span> (H) VOLET Coul/Guil (BAS)<br><span class="case">CaseV 03</span></td><td class="n">642,9</td><td class="c">2</td><td class="n">642,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9922-19298</span> (L) VOLET Coul/Guil (Ouv.G)<br><span class="case">CaseV 04 CaseV 05</span></td><td class="n">592,1</td><td class="c">4</td><td class="n">592,1</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9923-19299</span> (L) VOLET RENCONTRE INT (BAS)<br><span class="case">CaseV 03</span></td><td class="n">826,4</td><td class="c">1</td><td class="n">826,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9923-19299</span> (H) VOLET RENCONTRE INT (Ouv.G)<br><span class="case">CaseV 04 CaseV 05</span></td><td class="n">823,4</td><td class="c">2</td><td class="n">823,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9923-19299</span> (H) VOLET RENCONTRE INT (Ouv.G)<br><span class="case">CaseV 06</span></td><td class="n">823,4</td><td class="c">1</td><td class="n">823,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9925-19301</span> (L) VOLET POIGNÉE (BAS)<br><span class="case">CaseV 03</span></td><td class="n">826,4</td><td class="c">1</td><td class="n">826,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9925-19301</span> (H) VOLET POIGNÉE (Ouv.G)<br><span class="case">CaseV 04 CaseV 05</span></td><td class="n">823,4</td><td class="c">2</td><td class="n">823,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9925-19301</span> (H) VOLET POIGNÉE (Ouv.G)<br><span class="case">CaseV 06</span></td><td class="n">823,4</td><td class="c">1</td><td class="n">823,4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cp">Poinçon machinage</span><span class="cso">Soudage</span></div>
+</div>
+
+<!-- ===== PARECLOSE ===== -->
+<div class="sheet">
+  <div class="cap">Bon de travail les parcloses (scie) — assemblées sur cadres soudés</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 3</div></div>
+  <div class="box"><div class="title">PARECLOSE</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9604XB-19628</span> (L) PARECLOSE 7/8 - BATTANT, BLANC,BLANC (Larg.)<br><span class="case">Pare 01 Pare 02</span></td><td class="n">786,1</td><td class="c">4</td><td class="n">786,1</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9604XB-19628</span> (H) PARECLOSE 7/8 - BATTANT, BLANC,BLANC (Haut.)<br><span class="case">Pare 01 Pare 02</span></td><td class="n">425,2</td><td class="c">4</td><td class="n">425,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9904-19419</span> (H) Parclose 7/8 (Haut.)<br><span class="case">Pare 04 Pare 05</span></td><td class="n">756,9</td><td class="c">4</td><td class="n">756,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9904-19419</span> (H) Parclose 7/8 (Haut.)<br><span class="case">Pare 06</span></td><td class="n">756,9</td><td class="c">2</td><td class="n">756,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9904-19419</span> (L) Parclose 7/8 (Larg.)<br><span class="case">Pare 03</span></td><td class="n">754,9</td><td class="c">2</td><td class="n">754,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9904-19419</span> (L) Parclose 7/8 (Larg.)<br><span class="case">Pare 04 Pare 05</span></td><td class="n">545,1</td><td class="c">4</td><td class="n">545,1</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9905-19420</span> (L) Parclose rencontre 7/8 (Larg.)<br><span class="case">Pare 03</span></td><td class="n">735,9</td><td class="c">1</td><td class="n">735,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9905-19420</span> (H) Parclose rencontre 7/8 (Haut.)<br><span class="case">Pare 04 Pare 05</span></td><td class="n">734,4</td><td class="c">2</td><td class="n">734,4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cp">Poinçon machinage</span></div>
+</div>
+
+<!-- ===== MENEAU COULISSANT ===== -->
+<div class="sheet">
+  <div class="cap">À fabriquer et assembler sur les cadres soudés</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 4</div></div>
+  <div class="box"><div class="title">MENEAU COULISSANT</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9627-19900</span> (H) ARRET DE VOLET (Haut.)<br><span class="case">MenoC 02 MenoC 03</span></td><td class="n">825,4</td><td class="c">2</td><td class="n">825,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9627-19900</span> (L) ARRET DE VOLET (Larg.)<br><span class="case">MenoC 01</span></td><td class="n">824,9</td><td class="c">1</td><td class="n">824,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9921-19404</span> (L) MENEAU COULISSANT &amp; GUILLOTINE Pos: 914,4<br><span class="case">MenoC 01</span></td><td class="n">796,9</td><td class="c">1</td><td class="n">796,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9921-19404</span> (H) MENEAU COULISSANT &amp; GUILLOTINE G-Fixe Pos: 609,6<br><span class="case">MenoC 02 MenoC 03</span></td><td class="n">796,9</td><td class="c">2</td><td class="n">796,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9921-19404</span> (H) MENEAU COULISSANT &amp; GUILLOTINE G-Fixe Pos: 762<br><span class="case">MenoC 04</span></td><td class="n">796,9</td><td class="c">1</td><td class="n">796,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9929-19403</span> (L) Moulure en L coulissant et guillotine<br><span class="case">MenoC 04</span></td><td class="n">1435,2</td><td class="c">1</td><td class="n">1435,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9931-19405</span> (L) Adaptateur de mousticaire coulissant &amp; guillotine<br><span class="case">MenoC 01</span></td><td class="n">790,4</td><td class="c">1</td><td class="n">790,4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cp">Poinçon machinage</span><span class="cse">Sous-ensemble</span></div>
+</div>
+
+<!-- ===== SOUFFLAGE PVC 90 ===== -->
+<div class="sheet">
+  <div class="cap">Bon de travail bon finition — à fabriquer et assembler sur les fenêtres</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 5</div></div>
+  <div class="box"><div class="title">SOUFFLAGE PVC 90</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">9876-13100</span> (L) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 06</span></td><td class="n">1505</td><td class="c">2</td><td class="n">1505</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">9876-13100</span> (H) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 03</span></td><td class="n">1290,8</td><td class="c">2</td><td class="n">1290,8</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9876-13100</span> (L) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 04 Souf 05</span></td><td class="n">1200,2</td><td class="c">4</td><td class="n">1200,2</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9876-13100</span> (L) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 01 Souf 02</span></td><td class="n">895,4</td><td class="c">4</td><td class="n">895,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">9876-13100</span> (H) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 04 Souf 05</span></td><td class="n">884,4</td><td class="c">4</td><td class="n">884,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">9876-13100</span> (H) PLANCHE PVC 6 1/4 - FERMEE, BLANC 141192<br><span class="case">Souf 01 Souf 02</span></td><td class="n">554,2</td><td class="c">4</td><td class="n">554,2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cas">Assemblage</span></div>
+</div>
+
+<!-- ===== MOUSTICAIRE ===== -->
+<div class="sheet">
+  <div class="cap">6 moustiquaires — ship-partiel possible (livrer plus tard)</div>
+  <div class="fp-hd"><div class="t">Feuille de production</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 6</div></div>
+  <div class="box"><div class="title">MOUSTICAIRE</div>
+    <table>
+      <thead><tr><td class="comm">COMM/ITEM</td><td>Pièces</td><td class="n col-t">Longueur TIGER</td><td class="c col-q">Qté</td><td class="n col-l">Longueur</td></tr></thead>
+      <tbody>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">BAR38LIBW</span> (L) Barre a moustiquaire avec lèvre int. 3/8 x 3/4 blanc<br><span class="case">Moust 01 Moust 02</span></td><td class="n">758,3</td><td class="c">4</td><td class="n">758,3</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">BAR38LIBW</span> (H) Barre a moustiquaire avec lèvre int. 3/8 x 3/4 blanc<br><span class="case">Moust 01 Moust 02</span></td><td class="n">428,7</td><td class="c">4</td><td class="n">428,7</td></tr>
+        <tr><td class="comm">031735 <span class="it">3</span></td><td class="pc"><span class="code">BAR716BW</span> (H) Barre a moustiquaire 7/16 x 11/16 blanc bleuté<br><span class="case">Moust 04 Moust 05</span></td><td class="n">751,9</td><td class="c">4</td><td class="n">751,9</td></tr>
+        <tr><td class="comm">031735 <span class="it">2</span></td><td class="pc"><span class="code">BAR716BW</span> (L) Barre a moustiquaire 7/16 x 11/16 blanc bleuté<br><span class="case">Moust 03</span></td><td class="n">747,4</td><td class="c">2</td><td class="n">747,4</td></tr>
+        <tr><td class="comm">031735 <span class="it">4</span></td><td class="pc"><span class="code">MF-6-16</span> Mèche fibre de verre noir 600' x 16" (Aire)<br><span class="case">—</span></td><td class="n">613021,3</td><td class="c">1</td><td class="n">613021,3</td></tr>
+        <tr><td class="comm">031735 <span class="it">1</span></td><td class="pc"><span class="code">MF-6-16</span> Mèche fibre de verre noir 600' x 16" (Aire)<br><span class="case">—</span></td><td class="n">481538,9</td><td class="c">2</td><td class="n">481538,9</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cs">Scie</span><span class="cas">Assemblage</span></div>
+</div>
+
+<!-- ===== THERMOS (ACHAT) ===== -->
+<div class="sheet">
+  <div class="cap">6 thermos et inspection — traçabilité par n° de lot · Commentaire : Production (015980)</div>
+  <div class="fp-hd"><div class="t">Feuille de production — THERMOS (achat sur commande)</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 7</div></div>
+  <div class="box">
+    <table>
+      <thead><tr><td>Description</td><td class="c" style="width:120px">Qté / Unité</td></tr></thead>
+      <tbody>
+        <tr><td>(031735/1) Double 1 Low-E Argon 3mm (777 X 447) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">2</td></tr>
+        <tr><td>(031735/2) Double 1 Low-E Argon 3mm (780 X 578) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">1</td></tr>
+        <tr><td>(031735/2) Double 1 Low-E Argon 3mm (762 X 578) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">1</td></tr>
+        <tr><td>(031735/3) Double 1 Low-E Argon 3mm (528 X 759) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">2</td></tr>
+        <tr><td>(031735/3) Double 1 Low-E Argon 3mm (528 X 780) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">2</td></tr>
+        <tr><td>(031735/4) Double 1 Low-E Argon 3mm (680 X 759) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">1</td></tr>
+        <tr><td>(031735/4) Double 1 Low-E Argon 3mm (680 X 780) Technoform Noir, Épais Total: 22.225mm.</td><td class="c">1</td></tr>
+        <tr><td style="font-weight:700; border:0">Total</td><td class="c" style="font-weight:700; border:0">10</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chev"><span class="cac">Achat sur commande</span><span class="cas">Assemblage</span></div>
+</div>
+
+<!-- ===== ASSEMBLAGE — ÉTIQUETTE item 1 (Battant) ===== -->
+<div class="sheet">
+  <div class="cap">Assemblage des fenêtres — étiquette collée sur la fenêtre (la flèche = sens d'ouverture)</div>
+  <div class="fp-hd"><div class="t">Assemblage — Étiquette</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 8</div></div>
+  <div class="etq-wrap">
+    <div class="etq-left">
+      <div class="etq-box">
+        <div class="etq-r etq-top"><span class="lbl"># Commande</span><span class="no">031735 \ 1</span><span class="no">015980</span></div>
+        <div class="etq-r etq-ab"><span class="k">LIVRÉ À</span><span class="v">Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r etq-ab"><span class="k">VENDU À</span><span>Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r">Battant PVC / 1 sections A</div>
+        <div class="etq-draw"><svg width="72" height="48"><rect x="1" y="1" width="70" height="46" fill="#eef2f5" stroke="#333"/><polygon points="5,43 36,6 67,43" fill="none" stroke="#333"/></svg><div class="dim">CADRE : 914,4 x 584,2 mm.<br>MOUL.EXT.: Aucune (914,4 x 584,2 mm.)</div></div>
+      </div>
+      <div class="etq-bullets">
+        - CADRE : Cadre 5 5/8 Flush (36 x 23)<br>
+        - VOLET : Contemporain No article : 9601XI-21343<br>
+        - VERRE : Double 1 Low-E Argon, Technoform Noir<br>
+        - FINITION INT.: Ext PVC 6''1/4 Fermée (9876-1100), Épais (totale): 10", Env. à part<br>
+        - PIÈCES: P18G-Auv, P18D-Auv, P18A, R18A, T380<br>
+        - MOUSTIQUAIRE : Fibre de verre<br>
+        - QUINCAILLERIE : Stainless (garantie à vie)
+      </div>
+      <div class="bc2"></div><div class="bc2-lbl">S91382TA</div>
+    </div>
+    <div><div class="etq-vnum">0<br>3<br>1<br>7<br>3<br>5</div><div class="etq-item">1</div></div>
+  </div>
+</div>
+
+<!-- ===== ASSEMBLAGE — ÉTIQUETTE item 2 (Guillotine) ===== -->
+<div class="sheet">
+  <div class="cap">Assemblage des fenêtres — étiquette collée sur la fenêtre (la flèche = sens d'ouverture)</div>
+  <div class="fp-hd"><div class="t">Assemblage — Étiquette</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 8</div></div>
+  <div class="etq-wrap">
+    <div class="etq-left">
+      <div class="etq-box">
+        <div class="etq-r etq-top"><span class="lbl"># Commande</span><span class="no">031735 \ 2</span><span class="no">015980</span></div>
+        <div class="etq-r etq-ab"><span class="k">LIVRÉ À</span><span class="v">Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r etq-ab"><span class="k">VENDU À</span><span>Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r">Guillotine Simple PVC / 1 sections GS</div>
+        <div class="etq-draw"><svg width="72" height="48"><rect x="1" y="1" width="70" height="46" fill="#eef2f5" stroke="#333"/><line x1="1" y1="24" x2="71" y2="24" stroke="#333"/><text x="30" y="40" font-size="16">&#8593;</text></svg><div class="dim">CADRE : 914,4 x 1320,8 mm.<br>MOUL.EXT.: Aucune (914,4 x 1320,8 mm.)</div></div>
+      </div>
+      <div class="etq-bullets">
+        - CADRE : Cadre 5 5/8 (36 x 52)<br>
+        - BALANCE: RESSORT 5LBS COURT + RESSORT 6LBS MOYEN<br>
+        - VERRE : Double 1 Low-E Argon, Technoform Noir<br>
+        - FINITION INT.: Ext PVC 6''1/4 Fermée (9876-1100), Épais (totale): 10", Env. à part<br>
+        - MENEAUX: 1: 914, 1: 660<br>
+        - PIÈCES: Barrure coul guillotine auto<br>
+        - MOUSTIQUAIRE : Fibre de verre<br>
+        - COUPE-FROID : Gris
+      </div>
+      <div class="bc2"></div><div class="bc2-lbl">S91383TA</div>
+    </div>
+    <div><div class="etq-vnum">0<br>3<br>1<br>7<br>3<br>5</div><div class="etq-item">2</div></div>
+  </div>
+</div>
+
+<!-- ===== ASSEMBLAGE — ÉTIQUETTE item 3 (Coulissant) ===== -->
+<div class="sheet">
+  <div class="cap">Assemblage des fenêtres — étiquette collée sur la fenêtre (la flèche = sens d'ouverture)</div>
+  <div class="fp-hd"><div class="t">Assemblage — Étiquette</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 8</div></div>
+  <div class="etq-wrap">
+    <div class="etq-left">
+      <div class="etq-box">
+        <div class="etq-r etq-top"><span class="lbl"># Commande</span><span class="no">031735 \ 3</span><span class="no">015980</span></div>
+        <div class="etq-r etq-ab"><span class="k">LIVRÉ À</span><span class="v">Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r etq-ab"><span class="k">VENDU À</span><span>Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r">Coulissant Simple PVC / 2 sections CSG,F</div>
+        <div class="etq-draw"><svg width="72" height="48"><rect x="1" y="1" width="70" height="46" fill="#eef2f5" stroke="#333"/><line x1="36" y1="1" x2="36" y2="47" stroke="#333"/><text x="10" y="30" font-size="16">&#8594;</text></svg><div class="dim">CADRE : 1219,2 x 914,4 mm.<br>MOUL.EXT.: Aucune (1219,2 x 914,4 mm.)</div></div>
+      </div>
+      <div class="etq-bullets">
+        - CADRE : Cadre 5 5/8 (48 x 36)<br>
+        - VERRE : Double 1 Low-E Argon, Technoform Noir<br>
+        - FINITION INT.: Ext PVC 6''1/4 Fermée (9876-1100), Épais (totale): 10", Env. à part<br>
+        - MENEAUX: 1: 610, 1: 610<br>
+        - PIÈCES: Barrure coul guillotine auto<br>
+        - MOUSTIQUAIRE : Fibre de verre<br>
+        - COUPE-FROID : Gris
+      </div>
+      <div class="bc2"></div><div class="bc2-lbl">S91384TA</div>
+    </div>
+    <div><div class="etq-vnum">0<br>3<br>1<br>7<br>3<br>5</div><div class="etq-item">3</div></div>
+  </div>
+</div>
+
+<!-- ===== ASSEMBLAGE — ÉTIQUETTE item 4 (Coulissant EGRESS) ===== -->
+<div class="sheet">
+  <div class="cap">Assemblage des fenêtres — étiquette collée sur la fenêtre (la flèche = sens d'ouverture)</div>
+  <div class="fp-hd"><div class="t">Assemblage — Étiquette</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 8</div></div>
+  <div class="etq-wrap">
+    <div class="etq-left">
+      <div class="etq-box">
+        <div class="etq-r etq-top"><span class="lbl"># Commande</span><span class="no">031735 \ 4</span><span class="no">015980</span></div>
+        <div class="etq-r etq-ab"><span class="k">LIVRÉ À</span><span class="v">Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r etq-ab"><span class="k">VENDU À</span><span>Pierre Naud inc. (Lac-Aux-Sables)</span></div>
+        <div class="etq-r">Coulissant Simple PVC / 2 sections CSG,F</div>
+        <div class="etq-draw"><svg width="72" height="48"><rect x="1" y="1" width="70" height="46" fill="#eef2f5" stroke="#333"/><line x1="36" y1="1" x2="36" y2="47" stroke="#333"/><text x="10" y="30" font-size="16">&#8594;</text></svg><div class="dim">CADRE : 1524 x 914,4 mm.<br>MOUL.EXT.: Aucune (1524 x 914,4 mm.)</div></div>
+      </div>
+      <div class="etq-bullets">
+        - CADRE : Cadre 5 5/8 (60 x 36)<br>
+        - VERRE : Double 1 Low-E Argon, Technoform Noir<br>
+        - FINITION INT.: Ext PVC 6''1/4 Fermée (9876-1100), Épais (totale): 10", Env. à part<br>
+        - MENEAUX: 1: 762, 1: 762<br>
+        - PIÈCES: Barrure coul guillotine auto<br>
+        - <b>*RESPECTE LA NORME EGRESS</b><br>
+        - MOUSTIQUAIRE : Fibre de verre<br>
+        - COUPE-FROID : Gris
+      </div>
+      <div class="bc2"></div><div class="bc2-lbl">S91385TA</div>
+    </div>
+    <div><div class="etq-vnum">0<br>3<br>1<br>7<br>3<br>5</div><div class="etq-item">4</div></div>
+  </div>
+</div>
+
+<!-- ===== VALIDATION (nouveau poste, style Fusion) ===== -->
+<div class="sheet">
+  <div class="cap">Nouveau poste — n'existe pas chez Fusion · présenté dans leur style, simple à lire</div>
+  <div class="fp-hd"><div class="t">Feuille de validation — Contrôle qualité</div><div class="r">Commande 031735 · BT 015980<br>2026-02-02 15:24:16 · Page : 9</div></div>
+  <div class="box"><div class="title">VALIDATION — avant expédition</div>
+    <table class="val">
+      <thead><tr><td>Item</td><td>Type · dimensions</td><td class="c">Dim.&nbsp;cadre</td><td class="c">Équerrage</td><td class="c">Verre&nbsp;/&nbsp;thermos</td><td class="c">Quincaillerie</td><td class="c">Moustiquaire</td><td>Energy&nbsp;Star</td><td class="c">Egress</td></tr></thead>
+      <tbody>
+        <tr><td class="c">1</td><td>Battant · 914 × 584</td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td>FRT-M-8-00034-00001</td><td class="c">—</td></tr>
+        <tr><td class="c">2</td><td>Guillotine · 914 × 1321</td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td>FRT-M-14-00010-00001</td><td class="c">—</td></tr>
+        <tr><td class="c">3</td><td>Coulissant · 1219 × 914</td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td>FRT-M-13-00010-00001</td><td class="c">—</td></tr>
+        <tr><td class="c">4</td><td>Coulissant · 1524 × 914</td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td class="c"><span class="chk"></span></td><td>FRT-M-13-00010-00001</td><td class="c"><b>OUI&nbsp;✓</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="val-sign"><div>Contrôlé par : _____________________</div><div>Date : _______________</div><div>Signature : _______________</div></div>
+</div>
+
+</body></html>

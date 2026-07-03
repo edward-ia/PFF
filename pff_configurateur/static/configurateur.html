@@ -178,8 +178,10 @@
       <div class="gh">Quincaillerie & accessoires</div>
       <label>Quincaillerie <span class="help" title="Mécanismes : poignée, opérateur, serrure, balance. La finition affecte l'aspect de la poignée en 3D.">?</span></label>
       <select id="quinc"><option>Stainless (garantie à vie)</option><option>Standard blanc</option></select>
-      <label>Coupe-froid <span class="help" title="Joint d'étanchéité périphérique (couleur). Empêche l'infiltration d'air/eau. Génère une ligne de composant.">?</span></label>
+      <div id="coupeRow">
+      <label>Coupe-froid <span class="help" title="Joint d'étanchéité périphérique à compression (couleur). Uniquement sur battant / auvent / porte d'entrée (charnières).">?</span></label>
       <select id="coupe"><option>Gris</option><option>Noir</option></select>
+      </div>
       <label id="moustRow"><input type="checkbox" id="moust" checked style="width:auto"> Moustiquaire fibre de verre <span class="help" title="Treillis amovible en fibre de verre. Indispensable au Québec. Génère une ligne de composant + fabrication différée possible.">?</span></label>
     </div>
 
@@ -457,7 +459,9 @@ function frameRect(cx,cy,w,h,m){
   box(w,FW,DEPTH,m,cx,cy+h/2-FW/2,0); box(w,FW,DEPTH,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,DEPTH,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,DEPTH,m,cx+w/2-FW/2,cy,0);
   // baguette de vitrage (relief autour de la vitre, côté intérieur) — aspect profilé PVC ; le cadre « Flush » (affleurant) est plat, sans ce relief
   if(!FLUSH){ const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
-    box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb); }
+    box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
+    const be=FW*0.42, ze=DEPTH/2-0.006, ew=w-2*FW+be, eh=h-2*FW+be;   // bordure EXTÉRIEURE = relief visible de dehors (le cadre Flush en est dépourvu → face plate)
+    box(ew,be,0.012,m,cx,cy+eh/2,ze); box(ew,be,0.012,m,cx,cy-eh/2,ze); box(be,eh,0.012,m,cx-ew/2,cy,ze); box(be,eh,0.012,m,cx+ew/2,cy,ze); }
 }
 function lever(x,y,z,m,side){ m=m||HM; side=side||-1; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+side*0.012); }   // poignée bec-de-cane — side=-1 saillie INTÉRIEUR (défaut), +1 EXTÉRIEUR
 function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant/auvent) — saillie côté INTÉRIEUR (-z) ; renvoie le groupe bras (tourne à l'ouverture)
@@ -748,6 +752,7 @@ function renderFamOpts(){
   ['ouvrant','panneau','sidelights','vantaux','glassW','glassH','sensOuv','imposteSpan'].forEach(id=>ui(id)?.addEventListener('input',refresh));
   if(ui('sections')){ renderOpenSecs(); ui('sections').addEventListener('change',()=>{ renderOpenSecs(); refresh(); }); }
   if(ui('moustRow')) ui('moustRow').style.display=usesScreen(f)?'':'none';   // moustiquaire visible seulement sur les familles grillageables
+  if(ui('coupeRow')) ui('coupeRow').style.display=usesCoupeFroid(f)?'':'none';   // coupe-froid masqué pour ce qui glisse (coulissant/guillotine/patio) + fixe
   pairSliders();   // jumelle les sliders (dont Vitrage L/H recréés ici) à leur champ de saisie
 }
 function syncOpenSecs(){ const wrap=ui('openSecs'); if(!wrap) return;   // le sens n'est actif que si la section est ouvrante
