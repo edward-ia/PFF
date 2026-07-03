@@ -166,12 +166,25 @@
     <!-- Données 100% dynamiques : n° = po.name, date = maintenant,        -->
     <!-- Envoyé par = utilisateur, fournisseur + adresse = fiche réelle.   -->
     <!-- ============================================================= -->
+    <record id="paperformat_pff_po" model="report.paperformat">
+        <field name="name">PFF Bon d'achat</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">6</field>
+        <field name="margin_bottom">6</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">6</field>
+        <field name="dpi">90</field>
+    </record>
     <record id="action_report_pff_po" model="ir.actions.report">
         <field name="name">Bon d'achat (Fusion)</field>
         <field name="model">purchase.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">pff_configurateur.report_pff_po</field>
         <field name="report_file">pff_configurateur.report_pff_po</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
         <field name="binding_model_id" ref="purchase.model_purchase_order"/>
         <field name="binding_type">report</field>
     </record>
@@ -182,21 +195,23 @@
                 <t t-set="tot" t-value="sum(po.order_line.mapped('product_qty'))"/>
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12px;">
 
-                    <!-- ===== En-tête ===== -->
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                        <div style="width:33%;">
-                            <img t-if="po.company_id.logo" t-att-src="image_data_uri(po.company_id.logo)" style="max-height:56px;max-width:230px;"/>
-                            <div t-else="" style="font-weight:bold;font-size:17px;color:#0a63a8;">PORTES ET FENÊTRES FUSION</div>
-                        </div>
-                        <div style="width:34%;text-align:center;padding-top:8px;font-size:15px;">
-                            Commande achat # <span style="font-weight:bold;" t-esc="po.name"/>
-                        </div>
-                        <div style="width:33%;text-align:right;font-size:10px;color:#333;">
-                            <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>
-                            Page: 1<br/>
-                            Envoye par: <span t-esc="(po.user_id or po.create_uid).name"/>
-                        </div>
-                    </div>
+                    <!-- ===== En-tête (tableau : fiable en PDF, contrairement au flex) ===== -->
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr style="vertical-align:top;">
+                            <td style="width:34%;">
+                                <img t-if="po.company_id.logo" t-att-src="image_data_uri(po.company_id.logo)" style="max-height:60px;max-width:240px;"/>
+                                <div t-else="" style="font-weight:bold;font-size:17px;color:#0a63a8;">PORTES ET FENÊTRES FUSION</div>
+                            </td>
+                            <td style="width:33%;text-align:center;font-size:15px;padding-top:6px;">
+                                Commande achat # <span style="font-weight:bold;" t-esc="po.name"/>
+                            </td>
+                            <td style="width:33%;text-align:right;font-size:10px;color:#333;">
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>
+                                Page: 1<br/>
+                                Envoye par: <span t-esc="(po.user_id or po.create_uid).name"/>
+                            </td>
+                        </tr>
+                    </table>
 
                     <!-- ===== Dates + fournisseur ===== -->
                     <div style="margin:16px 0 0 34%;font-size:12px;">
@@ -230,11 +245,13 @@
                     </table>
                     <div style="border-top:1px solid #000;"/>
 
-                    <!-- ===== Commentaire + total ===== -->
-                    <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;">
-                        <div><span style="font-weight:bold;">Commentaire:</span> Production (<span t-esc="po.origin or ''"/>)</div>
-                        <div style="text-align:center;padding-right:60px;"><span style="font-weight:bold;margin-right:28px;">Total</span><span t-esc="int(tot)"/></div>
-                    </div>
+                    <!-- ===== Commentaire + total (tableau) ===== -->
+                    <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">
+                        <tr style="vertical-align:top;">
+                            <td style="text-align:left;"><span style="font-weight:bold;">Commentaire:</span> Production (<span t-esc="po.origin or ''"/>)</td>
+                            <td style="width:42%;text-align:center;"><span style="font-weight:bold;">Total</span><span style="margin-left:34px;" t-esc="int(tot)"/></td>
+                        </tr>
+                    </table>
 
                 </div>
             </t>
