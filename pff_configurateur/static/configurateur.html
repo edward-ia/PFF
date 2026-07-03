@@ -26,6 +26,7 @@
   .opensecs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; }
   .oscb{ display:flex; align-items:center; gap:3px; margin:0; font-size:12px; color:var(--txt); cursor:pointer; }
   .oscb input{ width:auto; }
+  .oscb select{ width:auto; padding:2px 3px; font-size:11px; }
   .gh { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin:0 0 8px; }
   label { display:block; font-size:11px; color:var(--muted); margin:8px 0 3px; }
   .val { color:var(--accent); font-weight:600; }
@@ -141,7 +142,7 @@
       <input type="range" id="h" min="450" max="2400" step="3.175" value="914" />
       <label>Imposte (fixe au-dessus) <span class="help" title="Section vitrée fixe ajoutée au-dessus (transom) ; crée un meneau de jumelage. Répond au « fixe sur le dessus » de l'appel d'offres.">?</span></label>
       <select id="imposte"><option value="none">Aucune</option><option value="on">Imposte fixe</option></select>
-      <label>Imposte — largeur <span class="help" title="Largeur de l'imposte (fraction de la largeur de la fenêtre ; 100% = pleine largeur).">?</span></label>
+      <label>Imposte — largeur : <span class="val" id="impWLbl"></span> <span class="help" title="Largeur de l'imposte (fraction de la largeur totale ; 100% = pleine largeur, incluant les verres latéraux d'une porte selon l'option Imposte — étendue).">?</span></label>
       <input type="range" id="imposteW" min="0.3" max="1" step="0.02" value="1" />
       <label>Imposte — hauteur : <span class="val" id="impHLbl"></span> <span class="help" title="Hauteur de l'imposte.">?</span></label>
       <input type="range" id="imposteH" min="150" max="800" step="10" value="350" />
@@ -212,8 +213,8 @@
 
 <script type="importmap">
 { "imports": {
-  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  "three": "./lib/three.module.js",
+  "three/addons/": "./lib/addons/"
 }}
 </script>
 <script type="module">
@@ -289,7 +290,9 @@ function state(){
     glassW:+(ui('glassW')?.value||0.62), glassH:+(ui('glassH')?.value||0.46),
     sections:+(ui('sections')?.value||FAMILIES[fam].sections), ouvrant:ui('ouvrant')?.value||'D',
     openSecs:(()=>{ const cbs=document.querySelectorAll('#openSecs .osc'); return cbs.length?[...cbs].map(c=>c.checked):null; })(),
-    panneau:ui('panneau')?.value||'mi', sidelights:ui('sidelights')?.value||'none' };
+    slideDirs:(()=>{ const ds=document.querySelectorAll('#openSecs .osd'); return ds.length?[...ds].map(d=>d.value):null; })(),
+    panneau:ui('panneau')?.value||'mi', sidelights:ui('sidelights')?.value||'none',
+    sensOuv:ui('sensOuv')?.value||'ext', imposteSpan:ui('imposteSpan')?.value||'total' };
 }
 
 /* ===== COUCHE 4 — COMPOSANTS DÉRIVÉS ===== */
@@ -332,7 +335,9 @@ function derive(s){
     else if(s.family==='battant'&&s.vantaux===2){ const sw=s.W/2; sash(sw-d.vW,s.H-d.vH,'vantail G'); sash(sw-d.vW,s.H-d.vH,'vantail D'); comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau central (battant 2 vantaux)',lng:R(s.H-150),qte:1}); }
     else sash(s.W-d.vW,s.H-d.vH,'1 section');
   }
-  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH, iw=R(s.W*s.imposteW);   // imposte fixe au-dessus
+  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH;   // imposte fixe au-dessus (100% = pleine largeur)
+    let ibase=s.W; if(fam.door&&s.imposteSpan!=='porte') ibase+=300*(s.sidelights==='deux'?2:(s.sidelights==='none'?0:1));   // couvre aussi les verres latéraux (300 mm ch.)
+    const iw=R(ibase*s.imposteW);
     comps.push({grp:'Cadre',code:s.cadreCode,desc:'(L) Cadre imposte',lng:R(iw+weld),qte:2});
     comps.push({grp:'Cadre',code:s.cadreCode,desc:'(H) Cadre imposte',lng:R(ih+weld),qte:2});
     comps.push({grp:'Meneau',code:PROFILS.meneau,desc:'Meneau de jumelage (imposte)',lng:R(iw),qte:1});
@@ -386,7 +391,7 @@ function validate(s,dv){
     out.push({k:'Egress (sortie de secours)',v:`${area.toFixed(2)} m² · min ${Math.round(mn)} mm`,b:ok?'ok':'warn',t:ok?'Conforme':'Sous le seuil'});
   } else out.push({k:'Egress',v:'Non applicable (fixe)',b:'na',t:'N/A'});
   const hasGlass=dv.thermos.length>0;
-  if(hasGlass){ const es=V.ER>=34&&V.U<=1.22; out.push({k:'Energy Star',v:`U ≈ ${V.U.toFixed(2)} · ER ≈ ${V.ER}`,b:es?'ok':'bad',t:es?'Qualifié':'Non qualifié'}); }
+  if(hasGlass){ const es=V.ER>=34||V.U<=1.22; out.push({k:'Energy Star',v:`U ≈ ${V.U.toFixed(2)} · ER ≈ ${V.ER}`,b:es?'ok':'bad',t:es?'Qualifié':'Non qualifié'}); }
   else out.push({k:'Energy Star',v:'Aucun vitrage',b:'na',t:'N/A'});
   const renfQty=dv.comps.filter(c=>c.grp==='Renfort acier').reduce((a,c)=>a+c.qte,0); out.push({k:'NAFS / renfort acier',v:renfQty?`${renfQty} pièce(s) d'acier · voir onglet Découpe`:'Standard',b:renfQty?'warn':'ok',t:renfQty?'Renfort acier requis':'Sans renfort'});
   const big=dv.thermos.some(t=>Math.max(t.w,t.h)>=1000||(t.w*t.h/1e6)>0.84)||fam.door; out.push({k:'Verre trempé (sécurité)',v:fam.door?'Porte vitrée':(big?'Grand panneau':'Standard'),b:big?'warn':'na',t:big?'Trempé recommandé':'Non requis'});
@@ -400,8 +405,8 @@ function fiche(s){
   const f=FAMILIES[s.family],V=VERRE[s.vType],ce=COLORS[s.colExt],ci=COLORS[s.colInt],dim=`${fmt(s.W)} × ${fmt(s.H)}`;
   const door=f.door, extra=door?(s.family==='porte_patio'?`SECTIONS : ${s.sections}`:`PANNEAU : ${({plein:'Plein',mi:'Mi-vitré',vitre:'Pleine vitre',deco:'Décoratif'})[s.panneau]}\nVERRES LATÉRAUX : ${({none:'Aucun',gauche:'Gauche',droite:'Droite',deux:'Deux côtés'})[s.sidelights]}`):'';
   const GL={colonial:'Carrés (colonial)',prairie:'Prairie',croix:'Croix centrale'}, GLe={colonial:'Colonial grilles',prairie:'Prairie',croix:'Center cross'};
-  const optFr=(s.grilles&&s.grilles!=='none'?'\nCROISILLONS : '+GL[s.grilles]:'')+(s.aspect==='depoli'?'\nVERRE : Dépoli / givré':'')+(s.imposte&&s.imposte!=='none'?'\nIMPOSTE : Fixe '+s.imposteH+' mm (au-dessus)':'')+(s.family==='battant'&&s.vantaux===2?'\nVANTAUX : 2 (à la française)':'');
-  const optEn=(s.grilles&&s.grilles!=='none'?'\nGRILLES : '+GLe[s.grilles]:'')+(s.aspect==='depoli'?'\nGLASS : Frosted':'')+(s.imposte&&s.imposte!=='none'?'\nTRANSOM : Fixed '+s.imposteH+' mm (above)':'')+(s.family==='battant'&&s.vantaux===2?'\nLEAVES : 2 (French)':'');
+  const optFr=(s.grilles&&s.grilles!=='none'?'\nCROISILLONS : '+GL[s.grilles]:'')+(s.aspect==='depoli'?'\nVERRE : Dépoli / givré':'')+(s.imposte&&s.imposte!=='none'?'\nIMPOSTE : Fixe '+s.imposteH+' mm (au-dessus)':'')+(s.family==='battant'&&s.vantaux===2?'\nVANTAUX : 2 (à la française)':'')+(s.family==='battant'&&s.sensOuv==='int'?'\nOUVERTURE : Vers l\'intérieur':'');
+  const optEn=(s.grilles&&s.grilles!=='none'?'\nGRILLES : '+GLe[s.grilles]:'')+(s.aspect==='depoli'?'\nGLASS : Frosted':'')+(s.imposte&&s.imposte!=='none'?'\nTRANSOM : Fixed '+s.imposteH+' mm (above)':'')+(s.family==='battant'&&s.vantaux===2?'\nLEAVES : 2 (French)':'')+(s.family==='battant'&&s.sensOuv==='int'?'\nSWING : Inswing':'');
   const fr=`PRODUIT : ${f.code}${door?'':' / '+s.sections+' section(s)'}
 CADRE   : ${door?'Cadre de porte':s.cadreNom} (${dim})
 ${extra?extra+'\n':''}VERRE   : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir (${V.ep})
@@ -456,7 +461,12 @@ function frameRect(cx,cy,w,h,m){
   const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
   box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
 }
-function lever(x,y,z,m){ m=m||HM; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+0.012); }   // poignée bec-de-cane
+function lever(x,y,z,m){ m=m||HM; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z-0.012); }   // poignée bec-de-cane — saillie côté INTÉRIEUR (-z)
+function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant ; réutilisable pour l'auvent) — saillie côté INTÉRIEUR (-z)
+  box(0.05,0.03,0.06,m,x,y,z);                                                                       // socle opérateur
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.007,0.07,12),m);
+  arm.position.set(x+0.03,y-0.02,z-0.03); arm.rotation.z=0.9; arm.castShadow=true; CUR.add(arm);     // bras replié
+  box(0.018,0.035,0.018,m,x+0.055,y-0.045,z-0.03); }                                                 // pommeau
 function grilleBars(w,h,x,y,z){ if(GRILLE==='none') return; const bw=0.016, zz=z+GT/2+0.005, m=FMext;
   const v=bx=>box(bw,h,0.01,m,x+bx,y,zz), hb=by=>box(w,bw,0.01,m,x,y+by,zz);
   if(GRILLE==='colonial'){ v(-w/6);v(w/6); hb(-h/6);hb(h/6); }          // 3×3 carreaux
@@ -510,28 +520,37 @@ function build3D(s){
     frameRect(0,cy,total+2*FW,H+FW,FMext);   // chambranle / cadre de porte
     if(hasL){ opening(x+sl/2,cy,sl,H); x+=sl; }
     if(s.family==='porte_patio'){ const n=s.sections,sw=W/n;
-      for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(i<n/2)?1:-1;
-        if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
+      for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1);
+        if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
         else opening(lx,cy,sw+FW,H); }
     } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
-      addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px; leaf(lcx,0,W,H,s.panneau,s.family); lever(lcx+(hingeR?-W/2+0.06:W/2-0.06),0,DEPTH/2,s.family==='porte_int'?blackHw:HM); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z)
+      addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px; leaf(lcx,0,W,H,s.panneau,s.family); lever(lcx+(hingeR?-W/2+0.06:W/2-0.06),0,-DEPTH/2,s.family==='porte_int'?blackHw:HM); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) ; poignée côté intérieur
     x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
   } else if(s.family==='guillotine'){
     opening(0,cy+H/4,W,H/2+FW);
-    addSash(0,cy-H/4,0.02,()=>{ frameRect(0,0,W,H/2+FW,FMext); glassPane(W-2*FW,H/2-FW,0,0,0); box(0.18,0.025,0.05,HM,0,-(H/4)+0.08,DEPTH/2); },{kind:'slide',open:{x:0,y:cy-H/4+H*0.32,rot:0}});
+    addSash(0,cy-H/4,0.02,()=>{ frameRect(0,0,W,H/2+FW,FMext); glassPane(W-2*FW,H/2-FW,0,0,0); box(0.18,0.025,0.05,HM,0,-(H/4)+0.08,-DEPTH/2); },{kind:'slide',open:{x:0,y:cy-H/4+H*0.32,rot:0}});
     if(s.moust) box(W-2*FW,H/2-FW,0.004,screenMat,0,cy-H/4,DEPTH/2+0.015);   // moustiquaire visible (moitié basse)
   } else if(s.family==='coulissant'){ const n=s.sections,sw=W/n;
-    for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(i<n/2)?1:-1;
-      if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
+    for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1);
+      if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
       else opening(lx,cy,sw+FW,H); }
   } else if(s.family==='battant'){
     frameRect(0,cy,W,H,FMext);   // dormant fixe
-    const iw=W-2*FW, ih=H-2*FW;
-    const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2); addSash(px,cy,0.01,()=>{ const lcx=scx-px; frameRect(lcx,0,sw,ih,FMext); glassPane(sw-2*FW,ih-2*FW,lcx,0,0); lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.3:-1.3}}); };   // pivote vers l'EXTÉRIEUR
+    const inswing=s.sensOuv==='int', iw=W-2*FW, ih=H-2*FW;
+    const ov=inswing?FW*0.6:0, sz=inswing?(-DEPTH-0.004):0.01, rotK=inswing?-1.3:1.3;   // ouverture INT : vantail derrière le dormant + battue (ov) qui recouvre la face intérieure → dégage le cadre en pivotant
+    const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2);
+      addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,FMext); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
+        if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?rotK:-rotK}});   // INT : poignée sur le montant, côté intérieur
+      if(!inswing) crank(scx,FW*0.7,-DEPTH/2-0.01); };   // EXT (standard NA) : opérateur à manivelle au centre de la traverse basse, côté intérieur — fixé au dormant, ne pivote pas avec le vantail
     if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
-  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM, iw=W*s.imposteW; box(iw,FW,DEPTH,FMext,0,H+FW/2,0); opening(0,H+FW+ih/2,iw,ih); }   // imposte fixe au-dessus (largeur réglable)
+  if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM; let ibase=W, icx=0, ftop=H;   // imposte fixe au-dessus (100% = pleine largeur)
+    if(fam.door){ const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux', tot=W+(hasL?sl:0)+(hasR?sl:0);
+      ftop=H+FW/2;   // le cadre de porte dépasse de FW/2
+      if(s.imposteSpan==='porte') icx=-tot/2+(hasL?sl:0)+W/2; else ibase=tot; }   // porte seule (centrée sur la porte) ou porte + verres latéraux
+    const iw=ibase*s.imposteW;
+    box(iw,FW,DEPTH,FMext,icx,ftop+FW/2,0); opening(icx,ftop+FW+ih/2,iw,ih); }
   brickMould(s); soufflageInt(s);
   const topY=(s.imposte&&s.imposte!=='none')?(H+FW+s.imposteH*MM):H; controls.target.set(0,topY/2,0);
 }
@@ -597,7 +616,7 @@ function renderBons(){
     html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">${d.n} ${d.grp.toUpperCase()}</span>${stationSel(d.grp)}</span>${band(d.postes,sel)}</div>${btTable(rows,d.grp)}</div>`; });
   const thPostes=['achat','assemblage'];
   if(sel==='all'||thPostes.includes(sel)){
-    let trows=''; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>Double 1 Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; }); });
+    let trows=''; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>${it.s.vType==='triple'?'Triple':'Double 1'} Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; }); });
     if(!trows) trows=`<tr><td colspan="6" class="pill">Aucun vitrage</td></tr>`;
     html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">⑧ THERMOS (achat)</span>${stationSel('Thermos')}</span>${band(thPostes,sel)}</div>
       <table class="bt-tbl"><thead><tr><th>Item</th><th>Produit</th><th>Dim. verre</th><th>N° lot</th><th>Épaisseur</th><th>Qté</th></tr></thead><tbody>${trows}</tbody></table>
@@ -631,7 +650,7 @@ function etqCard(it,idx){
     `- CADRE : ${s.cadreNom}`,
     s.family==='guillotine'?'- BALANCE: RESSORT 5LBS COURT + RESSORT 6LBS MOYEN':null,
     `- VERRE : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir`,
-    `- FINITION INT.: ${s.soufflage==='none'?'Aucune':'Ext PVC '+s.soufflage+'″ Fermée (9876-1100), Épais (totale): 10″, Env. à part'}`,
+    `- FINITION INT.: ${s.soufflage==='none'?'Aucune':'Ext PVC '+s.soufflage+'″ Fermée ('+PROFILS.soufflage+'), Épais (totale): 10″, Env. à part'}`,
     meneauTxt(s)?`- MENEAUX: ${meneauTxt(s)}`:null,
     `- PIÈCES: ${PIECES_FAM[s.family]||'—'}`,
     s.moust?'- MOUSTIQUAIRE : Fibre de verre':null,
@@ -705,7 +724,8 @@ function renderFamOpts(){
   if(f==='coulissant'||f==='porte_patio'){ h=`<label>Nombre de sections <span class="help" title="Nombre de panneaux côte à côte sur rails.">?</span></label><select id="sections"><option>2</option><option>3</option><option>4</option></select>
     <label>Sections ouvrantes <span class="help" title="Coche les panneaux qui coulissent (ouvrants). Les autres restent fixes. Plusieurs ouvrants possibles.">?</span></label><div id="openSecs" class="opensecs"></div>`; }
   else if(f==='battant'){ h=`<label>Nombre de vantaux <span class="help" title="1 vantail (battant simple) ou 2 vantaux à la française (ouverture des deux côtés + meneau central).">?</span></label><select id="vantaux"><option value="1" selected>1 vantail</option><option value="2">2 vantaux (à la française)</option></select>
-    <label>Sens (vu de l'extérieur) <span class="help" title="Côté des charnières / sens d'ouverture, vu de l'extérieur.">?</span></label><select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>`; }
+    <label>Sens (vu de l'extérieur) <span class="help" title="Côté des charnières / sens d'ouverture, vu de l'extérieur.">?</span></label><select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>
+    <label>Ouverture <span class="help" title="Pivot vers l'extérieur (standard nord-américain, opérateur à manivelle) ou vers l'intérieur (poignée, la battue passe devant le cadre).">?</span></label><select id="sensOuv"><option value="ext" selected>Vers l'extérieur (standard)</option><option value="int">Vers l'intérieur</option></select>`; }
   else if(f==='guillotine'){ h=`<div class="pill">2 vantaux verticaux · balance à ressort auto selon hauteur</div>`; }
   else if(f==='porte_int'){ h=`<label>Sens (vu de l'extérieur) <span class="help" title="Main de la porte (côté charnières).">?</span></label>
     <select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>
@@ -714,20 +734,27 @@ function renderFamOpts(){
     <select id="panneau"><option value="plein">Pleine</option><option value="mi" selected>Mi-vitrée</option><option value="vitre">Pleine vitre</option><option value="deco">Décoratif</option></select>
     <label>Verres latéraux <span class="help" title="Impostes vitrées fixes de chaque côté de la porte (sidelights).">?</span></label>
     <select id="sidelights"><option value="none">Aucun</option><option value="gauche">Gauche</option><option value="droite">Droite</option><option value="deux">Deux côtés</option></select>
+    <label>Imposte — étendue <span class="help" title="Si une imposte est active : elle couvre soit l'ensemble porte + verres latéraux, soit la porte seule (centrée sur la porte).">?</span></label>
+    <select id="imposteSpan"><option value="total" selected>Porte + verres latéraux</option><option value="porte">Porte seule</option></select>
     <label>Vitrage — largeur <span class="help" title="Largeur du panneau vitré de la porte (fraction de la porte).">?</span></label><input type="range" id="glassW" min="0.3" max="0.92" step="0.02" value="0.62">
     <label>Vitrage — hauteur <span class="help" title="Hauteur du panneau vitré de la porte.">?</span></label><input type="range" id="glassH" min="0.25" max="0.92" step="0.02" value="0.46">
     <label>Sens (vu de l'extérieur) <span class="help" title="Main de la porte, vue de l'extérieur.">?</span></label>
     <select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>`; }
   else h=`<div class="pill">Châssis fixe — non ouvrant</div>`;
   bx.innerHTML=h;
-  ['ouvrant','panneau','sidelights','vantaux','glassW','glassH'].forEach(id=>ui(id)?.addEventListener('input',refresh));
+  ['ouvrant','panneau','sidelights','vantaux','glassW','glassH','sensOuv','imposteSpan'].forEach(id=>ui(id)?.addEventListener('input',refresh));
   if(ui('sections')){ renderOpenSecs(); ui('sections').addEventListener('change',()=>{ renderOpenSecs(); refresh(); }); }
 }
+function syncOpenSecs(){ const wrap=ui('openSecs'); if(!wrap) return;   // le sens n'est actif que si la section est ouvrante
+  wrap.querySelectorAll('.osc').forEach((cb,i)=>{ const sel=wrap.querySelector(`.osd[data-i="${i}"]`); if(sel) sel.disabled=!cb.checked; }); }
 function renderOpenSecs(){
   const wrap=ui('openSecs'); if(!wrap) return; const n=+ui('sections').value; let h='';
-  for(let i=0;i<n;i++) h+=`<label class="oscb"><input type="checkbox" class="osc" ${i===n-1?'checked':''}> ${i+1}</label>`;
-  wrap.innerHTML=h;
-  wrap.querySelectorAll('.osc').forEach(cb=>cb.addEventListener('change',refresh));
+  for(let i=0;i<n;i++){ const def=(i<n/2&&i<n-1)?'D':'G';   // défaut : moitié gauche glisse à droite, moitié droite à gauche
+    const opts=(i>0?`<option value="G"${def==='G'?' selected':''}>◀</option>`:'')+(i<n-1?`<option value="D"${def==='D'?' selected':''}>▶</option>`:'');   // ne glisse que vers une section voisine qui la recouvre
+    h+=`<span class="oscb"><label class="oscb"><input type="checkbox" class="osc" ${i===n-1?'checked':''}> ${i+1}</label><select class="osd" data-i="${i}" title="Sens de glissement de la section ${i+1}">${opts}</select></span>`; }
+  wrap.innerHTML=h; syncOpenSecs();
+  wrap.querySelectorAll('.osc').forEach(cb=>cb.addEventListener('change',()=>{ syncOpenSecs(); refresh(); }));
+  wrap.querySelectorAll('.osd').forEach(sel=>sel.addEventListener('change',refresh));
 }
 
 /* ===== PRIX ESTIMÉ (approximatif, à calibrer avec Fusion) ===== */
@@ -746,7 +773,7 @@ const DIMS={ porte_ext:[914,2134], porte_int:[813,2032], porte_patio:[1829,2032]
 function applyDefaults(){ const d=DIMS[ui('family').value]; if(d){ ui('w').value=d[0]; ui('h').value=d[1]; } }
 
 /* ===== RAFRAÎCHISSEMENT ===== */
-function refresh(){ const s=state(); ui('wLbl').textContent=fmt(s.W); ui('hLbl').textContent=fmt(s.H); if(ui('impHLbl')) ui('impHLbl').textContent=fmt(s.imposteH); build3D(s); renderTab(); updatePrice(); }
+function refresh(){ const s=state(); ui('wLbl').textContent=fmt(s.W); ui('hLbl').textContent=fmt(s.H); if(ui('impHLbl')) ui('impHLbl').textContent=fmt(s.imposteH); if(ui('impWLbl')) ui('impWLbl').textContent=Math.round(s.imposteW*100)+' %'; build3D(s); renderTab(); updatePrice(); }
 ['family','w','h','unit','cadre','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
 ui('tabs').addEventListener('click',e=>{ if(!e.target.dataset.t)return; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); e.target.classList.add('active'); TAB=e.target.dataset.t; renderTab(); });
 ui('addItem').addEventListener('click',addToOrder);
@@ -841,8 +868,11 @@ function restoreState(s){
   set('quinc',s.quinc); set('coupe',s.coupe); chk('moust',s.moust);
   set('vantaux',s.vantaux); set('glassW',s.glassW); set('glassH',s.glassH);
   set('ouvrant',s.ouvrant); set('panneau',s.panneau); set('sidelights',s.sidelights);
+  set('sensOuv',s.sensOuv); set('imposteSpan',s.imposteSpan);
   if(ui('sections')){ set('sections',s.sections); renderOpenSecs();
-    if(Array.isArray(s.openSecs)){ const cbs=document.querySelectorAll('#openSecs .osc'); s.openSecs.forEach((v,i)=>{ if(cbs[i]) cbs[i].checked=!!v; }); } }
+    if(Array.isArray(s.openSecs)){ const cbs=document.querySelectorAll('#openSecs .osc'); s.openSecs.forEach((v,i)=>{ if(cbs[i]) cbs[i].checked=!!v; }); }
+    if(Array.isArray(s.slideDirs)){ const ds=document.querySelectorAll('#openSecs .osd'); s.slideDirs.forEach((v,i)=>{ if(ds[i]&&v&&[...ds[i].options].some(o=>o.value===v)) ds[i].value=v; }); }
+    syncOpenSecs(); }
   refresh(); if(typeof setView==='function') setView('ext');
 }
 function restoreOrder(items){
