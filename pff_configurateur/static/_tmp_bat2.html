@@ -125,6 +125,7 @@
         </optgroup>
         <optgroup label="Portes">
           <option value="porte_ext">Porte d'entrée (extérieure)</option>
+          <option value="porte_int">Porte intérieure</option>
           <option value="porte_patio">Porte patio (coulissante)</option>
         </optgroup>
       </select>
@@ -228,6 +229,7 @@ const FAMILIES = {
   coulissant: { fr:'Coulissant simple', en:'Single slider', code:'Coulissant Simple PVC', sections:2, split:'h', operable:true, hw:'barrure coulissante', door:false },
   fixe:       { fr:'Fixe', en:'Fixed', code:'Fixe PVC', sections:1, split:'none', operable:false, hw:'aucune', door:false },
   porte_ext:  { fr:"Porte d'entrée", en:'Entry door', code:'Porte Extérieure', sections:1, split:'none', operable:true, hw:'serrure multipoints', door:true },
+  porte_int:  { fr:'Porte intérieure', en:'Interior door', code:'Porte Intérieure', sections:1, split:'none', operable:true, hw:'poignée', door:true },
   porte_patio:{ fr:'Porte patio', en:'Patio door', code:'Porte Patio PVC', sections:2, split:'h', operable:true, hw:'coulissante', door:true },
 };
 
@@ -318,9 +320,10 @@ function derive(s){
   }
   if(fam.door){
     if(s.family==='porte_patio'){ const n=s.sections, sw=s.W/n; for(let i=0;i<n;i++) sash(sw-90, s.H-150, `vantail ${i+1}`, true, !s.openSecs||s.openSecs[i]); for(let i=0;i<n-1;i++) comps.push({grp:'Meneau',code:REGLES.meneau_code,desc:'Meneau patio',lng:R(s.H-150),qte:1}); }
-    else { // porte battante (entrée) — PAS de volet, le verre est tenu par parclose dans le battant
+    else { // porte battante (entrée ou intérieure) — PAS de volet, le verre est tenu par parclose dans le battant
       comps.push({grp:'Battant',code:'PORTE-LEAF',desc:'Battant de porte',lng:R(2*(s.W+s.H)),qte:1});
-      if(s.panneau==='plein') comps.push({grp:'Panneau',code:'PAN-PLEIN',desc:'Panneau plein isolé',lng:0,qte:1});
+      const solid = s.panneau==='plein' || s.family==='porte_int';   // porte intérieure = toujours pleine (comme la 3D)
+      if(solid) comps.push({grp:'Panneau',code:'PAN-PLEIN',desc:'Panneau plein isolé',lng:0,qte:1});
       else { const gw=s.W-200, gh=s.panneau==='vitre'?s.H-260:R(s.H*0.5); sash(gw,gh,'vitre porte',true,false); }
     }
     const cnt=s.sidelights==='deux'?2:(s.sidelights==='none'?0:1);
@@ -333,8 +336,7 @@ function derive(s){
     else sash(s.W-d.vW,s.H-d.vH,'1 section');
   }
   if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH;   // imposte fixe au-dessus (100% = pleine largeur)
-    let ibase=s.W;
-    if(fam.door){ const slc=(s.sidelights==='deux'?2:(s.sidelights==='none'?0:1)); ibase=(s.imposteSpan!=='porte'?s.W+300*slc:s.W)+120; }   // +120 mm = cadre de porte (2×FW) ; +300 mm/verre latéral
+    let ibase=s.W; if(fam.door&&s.imposteSpan!=='porte') ibase+=300*(s.sidelights==='deux'?2:(s.sidelights==='none'?0:1));   // couvre aussi les verres latéraux (300 mm ch.)
     const iw=R(ibase*s.imposteW);
     comps.push({grp:'Cadre',code:s.cadreCode,desc:'(L) Cadre imposte',lng:R(iw+weld),qte:2});
     comps.push({grp:'Cadre',code:s.cadreCode,desc:'(H) Cadre imposte',lng:R(ih+weld),qte:2});
@@ -449,6 +451,8 @@ function glassMat(s){ const g=VERRE[s.vType].tint[s.vTint];
 const steelMat=new THREE.MeshStandardMaterial({color:0x9aa0a6,roughness:.25,metalness:1});
 const whiteMat=new THREE.MeshStandardMaterial({color:0xf0f0f0,roughness:.5,metalness:.1});
 const screenMat=new THREE.MeshStandardMaterial({color:0x6b7077,roughness:.95,transparent:true,opacity:.5});   // moustiquaire
+const grooveMat=new THREE.MeshStandardMaterial({color:0x20242a,roughness:.6,metalness:.3});                   // rainure porte
+const blackHw=new THREE.MeshStandardMaterial({color:0x17191c,roughness:.4,metalness:.5});                     // poignée noire moderne
 let HM=steelMat, FMext, FMint, GM;
 function box(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
 function frameRect(cx,cy,w,h,m){
@@ -457,13 +461,12 @@ function frameRect(cx,cy,w,h,m){
   const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
   box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
 }
-function lever(x,y,z,m,side){ m=m||HM; side=side||-1; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+side*0.012); }   // poignée bec-de-cane — side=-1 saillie INTÉRIEUR (défaut), +1 EXTÉRIEUR
-function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant/auvent) — saillie côté INTÉRIEUR (-z) ; renvoie le groupe bras (tourne à l'ouverture)
-  box(0.06,0.04,0.05,m,x,y,z);                                                                       // socle opérateur (saillant intérieur)
-  const ag=new THREE.Group(); ag.position.set(x+0.02,y,z-0.05); CUR.add(ag);                         // groupe bras/pommeau, pivot au socle
-  const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.09,12),m); arm.position.set(0.03,-0.02,0); arm.rotation.z=0.9; arm.castShadow=true; ag.add(arm);
-  const knob=new THREE.Mesh(new THREE.BoxGeometry(0.022,0.045,0.022),m); knob.position.set(0.06,-0.05,0); knob.castShadow=true; ag.add(knob);
-  return ag; }
+function lever(x,y,z,m){ m=m||HM; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z-0.012); }   // poignée bec-de-cane — saillie côté INTÉRIEUR (-z)
+function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant ; réutilisable pour l'auvent) — saillie côté INTÉRIEUR (-z)
+  box(0.05,0.03,0.06,m,x,y,z);                                                                       // socle opérateur
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.007,0.007,0.07,12),m);
+  arm.position.set(x+0.03,y-0.02,z-0.03); arm.rotation.z=0.9; arm.castShadow=true; CUR.add(arm);     // bras replié
+  box(0.018,0.035,0.018,m,x+0.055,y-0.045,z-0.03); }                                                 // pommeau
 function grilleBars(w,h,x,y,z){ if(GRILLE==='none') return; const bw=0.016, zz=z+GT/2+0.005, m=FMext;
   const v=bx=>box(bw,h,0.01,m,x+bx,y,zz), hb=by=>box(w,bw,0.01,m,x,y+by,zz);
   if(GRILLE==='colonial'){ v(-w/6);v(w/6); hb(-h/6);hb(h/6); }          // 3×3 carreaux
@@ -477,7 +480,7 @@ function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); })
    anim = {open:{x,y,rot}} donne l'état ouvert (interpolé depuis base = position fermée). */
 function addSash(cx,cy,cz,build,anim){
   const g=new THREE.Group(); g.position.set(cx,cy,cz); const prev=CUR; CUR=g; build(); CUR=prev; root.add(g);
-  SASHES.push(Object.assign({g,base:{x:cx,y:cy,rot:0},target:0,p:0},anim));
+  SASHES.push(Object.assign({g,base:{x:cx,y:cy,rot:0},opened:false,p:0},anim));
 }
 
 function doorFrame(cx,cy,w,h,st){ const m=FMext,d=DEPTH*0.82;   // montants + traverses
@@ -488,19 +491,20 @@ function slabAround(cx,cy,w,h,gx,gy,gw,gh){ const m=FMext,d=DEPTH*0.7;   // remp
   if(gb-bot>0.002) box(w,gb-bot,d,m,cx,(gb+bot)/2,0);
   if(gl-lft>0.002) box(gl-lft,gt-gb,d,m,(lft+gl)/2,gy,0);
   if(rgt-gr>0.002) box(rgt-gr,gt-gb,d,m,(gr+rgt)/2,gy,0); }
-function panelGlass(cx,cy,w,h){ const m=FMext,bw=Math.min(0.045,w*0.3,h*0.3),d=0.03;   // baguettes + verre dans le trou (bw borné pour éviter le chevauchement sur petit vitrage)
+function panelGlass(cx,cy,w,h){ const m=FMext,bw=0.045,d=0.03;   // baguettes + verre dans le trou
   box(w,bw,d,m,cx,cy+h/2-bw/2,0); box(w,bw,d,m,cx,cy-h/2+bw/2,0); box(bw,h-2*bw,d,m,cx-w/2+bw/2,cy,0); box(bw,h-2*bw,d,m,cx+w/2-bw/2,cy,0);
   glassPane(w-2*bw,h-2*bw,cx,cy,0); }
-function moldingRect(cx,cy,w,h){ const m=FMext,bw=Math.min(0.05,w*0.3,h*0.3),zf=DEPTH*0.36;   // moulure en relief (panneau plein) — bw borné : pas de barres qui se croisent sur panneau court
+function moldingRect(cx,cy,w,h){ const m=FMext,bw=0.05,zf=DEPTH*0.36;   // moulure en relief (panneau plein)
   box(w,bw,0.016,m,cx,cy+h/2-bw/2,zf); box(w,bw,0.016,m,cx,cy-h/2+bw/2,zf); box(bw,h-2*bw,0.016,m,cx-w/2+bw/2,cy,zf); box(bw,h-2*bw,0.016,m,cx+w/2-bw/2,cy,zf); }
-function leaf(cx,cy,w,h,pan){
+function leaf(cx,cy,w,h,pan,fam){
+  if(fam==='porte_int'){ box(w,h,DEPTH*0.82,FMext,cx,cy,0); const gz=DEPTH*0.42; box(w*0.9,0.013,0.012,grooveMat,cx,cy+0.05,gz); box(w*0.9,0.013,0.012,grooveMat,cx,cy-0.01,gz); return; }   // porte pleine + 2 rainures
   const st=Math.min(0.11,w*0.18); doorFrame(cx,cy,w,h,st); const iw=w-2*st, ih=h-2*st, top=cy+ih/2, bot=cy-ih/2;
   if(pan==='plein'){ box(iw,ih,DEPTH*0.7,FMext,cx,cy,0); moldingRect(cx,cy+ih*0.24,iw*0.78,ih*0.4); moldingRect(cx,cy-ih*0.24,iw*0.78,ih*0.4); return; }
   const gw=Math.min(iw*0.96, iw*GLW), gh=Math.min(ih*0.96, ih*GLH);   // vitrage dimensionnable
   const gy=(pan==='vitre')?cy:(top - gh/2 - ih*0.05);                 // vitre centrée, sinon vers le haut
   slabAround(cx,cy,iw,ih,cx,gy,gw,gh);   // plein tout autour
   panelGlass(cx,gy,gw,gh);
-  if(pan!=='vitre'){ const sb=gy-gh/2, ph=sb-bot; if(ph>0.18) moldingRect(cx,(bot+sb)/2,iw*0.78,ph*0.7); }   // panneau plein bas mouluré (seuil relevé : pas de moulure sur un panneau trop court)
+  if(pan!=='vitre'){ const sb=gy-gh/2; if(sb-bot>0.05) moldingRect(cx,(bot+sb)/2,iw*0.78,(sb-bot)*0.72); }   // panneau plein bas mouluré
 }
 function brickMould(s){ if(s.moulure==='none')return; const W=s.W*MM,H=s.H*MM,cy=H/2,bw=s.moulure==='j'?0.02:(+s.moulure)*0.0254,z=DEPTH/2+0.004,t=0.018;
   box(W+2*bw,bw,t,FMext,0,cy+H/2+bw/2,z); box(W+2*bw,bw,t,FMext,0,cy-H/2-bw/2,z); box(bw,H,t,FMext,-W/2-bw/2,cy,z); box(bw,H,t,FMext,W/2+bw/2,cy,z); }
@@ -520,7 +524,7 @@ function build3D(s){
         if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
         else opening(lx,cy,sw+FW,H); }
     } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
-      addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px, hx=lcx+(hingeR?-W/2+0.06:W/2-0.06); leaf(lcx,0,W,H,s.panneau); lever(hx,0,-DEPTH/2,HM,-1); lever(hx,0,DEPTH/2,HM,1); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) ; poignée des deux côtés (int + ext)
+      addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px; leaf(lcx,0,W,H,s.panneau,s.family); lever(lcx+(hingeR?-W/2+0.06:W/2-0.06),0,-DEPTH/2,s.family==='porte_int'?blackHw:HM); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) ; poignée côté intérieur
     x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
   } else if(s.family==='guillotine'){
     opening(0,cy+H/4,W,H/2+FW);
@@ -536,17 +540,15 @@ function build3D(s){
     const ov=inswing?FW*0.6:0, sz=inswing?(-DEPTH-0.004):0.01, rotK=inswing?-1.3:1.3;   // ouverture INT : vantail derrière le dormant + battue (ov) qui recouvre la face intérieure → dégage le cadre en pivotant
     const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2);
       addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,FMext); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
-        if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?rotK:-rotK},crankOpen:true});   // casement : ouverture progressive (par crans)
-      if(!inswing){ const cg=crank(scx,FW+0.08,-DEPTH/2-0.06); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle bas-centre, saillante côté intérieur (hors soufflage) ; le bras tourne avec l'ouverture
+        if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?rotK:-rotK}});   // INT : poignée sur le montant, côté intérieur
+      if(!inswing) crank(scx,FW*0.7,-DEPTH/2-0.01); };   // EXT (standard NA) : opérateur à manivelle au centre de la traverse basse, côté intérieur — fixé au dormant, ne pivote pas avec le vantail
     if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
   if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM; let ibase=W, icx=0, ftop=H;   // imposte fixe au-dessus (100% = pleine largeur)
-    if(fam.door){ const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux', tot=W+(hasL?sl:0)+(hasR?sl:0), doorCx=-tot/2+(hasL?sl:0)+W/2;
-      ftop=H+FW/2;   // le chambranle de porte dépasse de FW/2
-      if(s.imposteSpan==='porte'){ ibase=W+2*FW; icx=doorCx; }   // porte seule → largeur du cadre de porte, centrée sur la porte
-      else { ibase=tot+2*FW; }   // porte + verres latéraux → largeur hors-tout de l'ensemble (flush chambranle)
-    }
+    if(fam.door){ const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux', tot=W+(hasL?sl:0)+(hasR?sl:0);
+      ftop=H+FW/2;   // le cadre de porte dépasse de FW/2
+      if(s.imposteSpan==='porte') icx=-tot/2+(hasL?sl:0)+W/2; else ibase=tot; }   // porte seule (centrée sur la porte) ou porte + verres latéraux
     const iw=ibase*s.imposteW;
     box(iw,FW,DEPTH,FMext,icx,ftop+FW/2,0); opening(icx,ftop+FW+ih/2,iw,ih); }
   brickMould(s); soufflageInt(s);
@@ -627,8 +629,8 @@ function renderBons(){
 }
 
 /* ===== ASSEMBLAGE — étiquettes (calqué sur Assemblage.pdf) ===== */
-const PIECES_FAM={ battant:'P18G-Auv, P18D-Auv, P18A, R18A, T380', guillotine:'Barrure coul guillotine auto', coulissant:'Barrure coul guillotine auto', porte_patio:'Barrure patio multipoints', porte_ext:'Serrure multipoints', fixe:'—' };
-const SECCODE={ battant:'A', guillotine:'GS', fixe:'F', porte_ext:'P', porte_patio:'PP' };
+const PIECES_FAM={ battant:'P18G-Auv, P18D-Auv, P18A, R18A, T380', guillotine:'Barrure coul guillotine auto', coulissant:'Barrure coul guillotine auto', porte_patio:'Barrure patio multipoints', porte_ext:'Serrure multipoints', porte_int:'Poignée + loquet', fixe:'—' };
+const SECCODE={ battant:'A', guillotine:'GS', fixe:'F', porte_ext:'P', porte_int:'PI', porte_patio:'PP' };
 function frnum(mm){ return (Math.round(mm*10)/10).toString().replace('.',','); }
 function secCode(s){ if(s.family==='coulissant') return 'CSG'+',F'.repeat(Math.max(0,s.sections-1)); return SECCODE[s.family]||''; }
 function nbSections(s){ return (s.family==='coulissant'||s.family==='porte_patio')?s.sections:1; }
@@ -725,6 +727,9 @@ function renderFamOpts(){
     <label>Sens (vu de l'extérieur) <span class="help" title="Côté des charnières / sens d'ouverture, vu de l'extérieur.">?</span></label><select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>
     <label>Ouverture <span class="help" title="Pivot vers l'extérieur (standard nord-américain, opérateur à manivelle) ou vers l'intérieur (poignée, la battue passe devant le cadre).">?</span></label><select id="sensOuv"><option value="ext" selected>Vers l'extérieur (standard)</option><option value="int">Vers l'intérieur</option></select>`; }
   else if(f==='guillotine'){ h=`<div class="pill">2 vantaux verticaux · balance à ressort auto selon hauteur</div>`; }
+  else if(f==='porte_int'){ h=`<label>Sens (vu de l'extérieur) <span class="help" title="Main de la porte (côté charnières).">?</span></label>
+    <select id="ouvrant"><option value="G">Tirant gauche</option><option value="D" selected>Tirant droit</option></select>
+    <div class="pill">Porte intérieure pleine (bois) — pas de vitrage ni verres latéraux.</div>`; }
   else if(f==='porte_ext'){ h=`<label>Type de panneau <span class="help" title="Composition de la porte : pleine, mi-vitrée, pleine vitre ou panneau décoratif.">?</span></label>
     <select id="panneau"><option value="plein">Pleine</option><option value="mi" selected>Mi-vitrée</option><option value="vitre">Pleine vitre</option><option value="deco">Décoratif</option></select>
     <label>Verres latéraux <span class="help" title="Impostes vitrées fixes de chaque côté de la porte (sidelights).">?</span></label>
@@ -764,7 +769,7 @@ function updatePrice(){ const pe=ui('price'); if(!pe) return; const p=priceEstim
   pe.innerHTML=`≈ ${p.toLocaleString('fr-CA')} $ <small>CAD · estimé</small>`+(ORDER.length?`<br><small>Commande (${ORDER.length}) : ${tot.toLocaleString('fr-CA')} $</small>`:''); }
 
 /* ===== DIMENSIONS PAR DÉFAUT RÉALISTES PAR FAMILLE ===== */
-const DIMS={ porte_ext:[914,2134], porte_patio:[1829,2032], battant:[610,1219], guillotine:[914,1524], coulissant:[1219,914], fixe:[1219,914] };
+const DIMS={ porte_ext:[914,2134], porte_int:[813,2032], porte_patio:[1829,2032], battant:[610,1219], guillotine:[914,1524], coulissant:[1219,914], fixe:[1219,914] };
 function applyDefaults(){ const d=DIMS[ui('family').value]; if(d){ ui('w').value=d[0]; ui('h').value=d[1]; } }
 
 /* ===== RAFRAÎCHISSEMENT ===== */
@@ -796,18 +801,14 @@ renderer.domElement.addEventListener('pointerup',e=>{
   ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; ray.setFromCamera(ndc,camera);
   const hits=ray.intersectObjects(root.children,true); if(!hits.length) return;
   let o=hits[0].object, sa=null; while(o&&o!==root){ const f=SASHES.find(x=>x.g===o); if(f){sa=f;break;} o=o.parent; }
-  if(!sa) sa=SASHES[0]; toggleSash(sa);   // clic → bascule / progresse l'ouvrant (battant = par crans)
+  if(!sa) sa=SASHES[0]; if(sa) sa.opened=!sa.opened;   // clic sur une partie fixe → bascule l'ouvrant principal
 });
-function toggleSash(sa){ if(!sa) return;
-  if(sa.crankOpen){ const step=Math.round((sa.target||0)*3); sa.target=((step+1)%4)/3; }   // 0 → ⅓ → ⅔ → 1 → 0
-  else sa.target=sa.target?0:1; }
 
 function loop(){ controls.update();
-  for(const sa of SASHES){ const t=sa.target||0; sa.p+=(t-sa.p)*0.16; const k=sa.p;
+  for(const sa of SASHES){ const t=sa.opened?1:0; sa.p+=(t-sa.p)*0.16; const k=sa.p;
     sa.g.position.x=sa.base.x+(sa.open.x-sa.base.x)*k;
     sa.g.position.y=sa.base.y+(sa.open.y-sa.base.y)*k;
     sa.g.rotation.y=(sa.open.rot||0)*k;
-    if(sa.crankArm) sa.crankArm.rotation.z=k*Math.PI*4;   // la manivelle tourne proportionnellement à l'ouverture
   }
   renderer.render(scene,camera); requestAnimationFrame(loop); }
 /* ===== VUE EXTÉRIEUR ⇄ INTÉRIEUR ===== */
@@ -824,7 +825,7 @@ ui('valider').addEventListener('click',()=>{
     const ep=(VERRE[s.vType]||{}).ep||'';
     // Paramètres lisibles pour les colonnes optionnelles (filtrés par famille)
     const isDoorExt=s.family==='porte_ext', isBattant=s.family==='battant', isSlide=(s.family==='coulissant'||s.family==='porte_patio');
-    const hasOuvrant=isBattant||isDoorExt;
+    const hasOuvrant=isBattant||s.family==='porte_int'||isDoorExt;
     const params={
       unit:{mm:'mm',frac:'pouces (fraction)',dec:'pouces (décimal)',ftin:'pied-pouce'}[s.unit]||s.unit,
       cadre:s.cadreNom||'', verre:glass,
@@ -886,5 +887,9 @@ window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_res
 renderFamOpts(); resize(); refresh(); loop();
 try{ window.parent.postMessage({type:'pff_ready'}, '*'); }catch(e){}
 </script>
-</body>
+<script>window.addEventListener('load',function(){setTimeout(function(){
+var f=document.getElementById('family'); f.value='battant'; f.dispatchEvent(new Event('input',{bubbles:true}));
+var h=document.getElementById('h'); if(h){h.value=700; h.dispatchEvent(new Event('input',{bubbles:true}));}
+setTimeout(function(){var b=document.querySelector('[data-v=\"int\"]'); if(b) b.click();},500);
+},700);});</script></body>
 </html>
