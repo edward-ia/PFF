@@ -194,14 +194,14 @@
                         <div style="width:33%;text-align:right;font-size:10px;color:#333;">
                             <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>
                             Page: 1<br/>
-                            Envoyé par: <span t-esc="(po.user_id or po.create_uid).name"/>
+                            Envoye par: <span t-esc="(po.user_id or po.create_uid).name"/>
                         </div>
                     </div>
 
                     <!-- ===== Dates + fournisseur ===== -->
                     <div style="margin:16px 0 0 34%;font-size:12px;">
-                        Date achat :&#160;&#160;<span t-esc="po.date_order.strftime('%Y-%m-%d') if po.date_order else ''"/><br/>
-                        Date requise :&#160;<span t-esc="po.date_planned.strftime('%Y-%m-%d') if po.date_planned else ''"/>
+                        Date achat :<span style="margin-left:8px;" t-esc="po.date_order.strftime('%Y-%m-%d') if po.date_order else ''"/><br/>
+                        Date requise :<span style="margin-left:8px;" t-esc="po.date_planned.strftime('%Y-%m-%d') if po.date_planned else ''"/>
                     </div>
                     <div style="margin:14px 0 0 34%;font-size:12px;line-height:1.35;">
                         <div style="font-weight:bold;" t-esc="po.partner_id.name"/>
@@ -218,7 +218,7 @@
                         <thead>
                             <tr style="border-top:1px solid #000;border-bottom:1px solid #000;">
                                 <th style="text-align:left;padding:6px 8px;">Description</th>
-                                <th style="text-align:right;padding:6px 8px;width:130px;">Qte / Unité</th>
+                                <th style="text-align:right;padding:6px 8px;width:130px;">Qte / Unite</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -233,7 +233,7 @@
                     <!-- ===== Commentaire + total ===== -->
                     <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;">
                         <div><span style="font-weight:bold;">Commentaire:</span> Production (<span t-esc="po.origin or ''"/>)</div>
-                        <div style="text-align:center;padding-right:60px;"><span style="font-weight:bold;">Total</span>&#160;&#160;&#160;&#160;<span t-esc="int(tot)"/></div>
+                        <div style="text-align:center;padding-right:60px;"><span style="font-weight:bold;margin-right:28px;">Total</span><span t-esc="int(tot)"/></div>
                     </div>
 
                 </div>
