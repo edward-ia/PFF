@@ -278,6 +278,9 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-set="d" t-value="doc._get_commande_data()"/>
                 <t t-set="L" t-value="d['L']"/>
+                <!-- Le <div class="article"> est REQUIS : sans lui, Odoo n'enveloppe pas
+                     le corps dans minimal_layout et perd le charset UTF-8 (accents cassés). -->
+                <div class="article" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id">
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
 
                     <!-- En-tête -->
@@ -292,7 +295,7 @@
                                 <div style="font-size:9px;">#Client: <span t-esc="d['client_ref']"/>, #Soumission: <span t-esc="d['soumission']"/></div>
                             </td>
                             <td style="width:33%;text-align:right;font-size:9px;color:#333;">
-                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>Page : 1 (MAJ 1.0.2)
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>Page : 1 (MAJ 1.0.3)
                             </td>
                         </tr>
                     </table>
@@ -376,6 +379,7 @@
                         <span t-out="d['note_initial']"/>
                     </div>
 
+                </div>
                 </div>
             </t>
         </t>
