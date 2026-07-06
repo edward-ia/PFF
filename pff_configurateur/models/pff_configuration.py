@@ -1,5 +1,7 @@
 import json
 
+from markupsafe import Markup
+
 from odoo import models, fields, api, _
 
 FAMILIES = [
@@ -184,6 +186,84 @@ class PffConfiguration(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
+
+    # ------------------------------------------------------------------
+    #  RAPPORT « Commande client » (format Fusion) — données dynamiques
+    # ------------------------------------------------------------------
+    def _cmd_svg(self, fam, nsec, right):
+        """Petit dessin 2D « vue extérieure » (SVG) par famille — style Fusion."""
+        W, H = 96, 60
+        s = ['<svg viewBox="0 0 100 64" width="94" height="60" '
+             'xmlns="http://www.w3.org/2000/svg">',
+             '<rect x="2" y="2" width="%d" height="%d" fill="#f5f5f5" '
+             'stroke="#333" stroke-width="1.5"/>' % (W, H)]
+        if fam == 'battant':
+            s.append('<path d="M2 2 L50 32 L2 62" fill="none" stroke="#999" stroke-width="1"/>')
+            s.append('<path d="M98 2 L50 32 L98 62" fill="none" stroke="#999" stroke-width="1"/>')
+        elif fam == 'guillotine':
+            s.append('<line x1="2" y1="32" x2="98" y2="32" stroke="#333" stroke-width="1"/>')
+            s.append('<path d="M50 54 L50 40 M44 46 L50 40 L56 46" stroke="#333" '
+                     'stroke-width="1.5" fill="none"/>')
+        elif fam in ('coulissant', 'porte_patio'):
+            for i in range(1, max(1, nsec)):
+                x = 2 + W * i / max(1, nsec)
+                s.append('<line x1="%.0f" y1="2" x2="%.0f" y2="62" stroke="#333" stroke-width="1"/>' % (x, x))
+            if right:
+                s.append('<path d="M36 32 L62 32 M56 26 L62 32 L56 38" stroke="#333" '
+                         'stroke-width="1.5" fill="none"/>')
+            else:
+                s.append('<path d="M62 32 L36 32 M42 26 L36 32 L42 38" stroke="#333" '
+                         'stroke-width="1.5" fill="none"/>')
+        elif fam in ('porte_ext', 'porte_int'):
+            s.append('<rect x="16" y="10" width="66" height="46" fill="none" '
+                     'stroke="#999" stroke-width="1"/>')
+        s.append('</svg>')
+        return Markup(''.join(s))
+
+    def _get_commande_data(self):
+        """Assemble les données de la commande client au format Fusion."""
+        self.ensure_one()
+
+        def mm2in(mm):
+            return round((mm or 0) / 25.4)
+
+        fam_labels = dict(FAMILIES)
+        items = []
+        for idx, l in enumerate(self.line_ids, 1):
+            try:
+                nsec = int(''.join(c for c in (l.param_sections or '') if c.isdigit()) or 1)
+            except ValueError:
+                nsec = 1
+            w_in, h_in = mm2in(l.width), mm2in(l.height)
+            specs = []
+            if l.param_cadre:
+                specs.append("CADRE : %s (%s x %s)" % (l.param_cadre, w_in, h_in))
+            specs.append("SECTION : (%s x %s mm)" % (round(l.width), round(l.height)))
+            if l.param_verre:
+                specs.append("VERRE : %s, Technoform Noir" % l.param_verre)
+            if l.param_grilles and l.param_grilles not in ('Aucun', 'none', ''):
+                specs.append("CROISILLONS : %s" % l.param_grilles)
+            if l.param_soufflage and l.param_soufflage not in ('Aucun', 'none', ''):
+                specs.append("FINITION INT. : %s" % l.param_soufflage)
+            if l.param_moust and l.param_moust not in ('Non', 'none', ''):
+                specs.append("MOUSTIQUAIRE : Fibre de verre")
+            if l.param_quinc:
+                specs.append("QUINCAILLERIE : %s" % l.param_quinc)
+            if l.param_coupe:
+                specs.append("COUPE-FROID : %s" % l.param_coupe)
+            items.append({
+                'idx': idx,
+                'name': "%s PVC / %s sections" % (fam_labels.get(l.family, l.family), nsec),
+                'w_in': w_in, 'h_in': h_in, 'qty': l.qty,
+                'price_unit': l.price_unit, 'subtotal': l.price_subtotal,
+                'svg': self._cmd_svg(l.family, nsec, (l.param_ouvrant or 'D') != 'G'),
+                'specs': specs,
+            })
+        sub = self.amount_total
+        tps = round(sub * 0.05, 2)
+        tvq = round(sub * 0.09975, 2)
+        return {'items': items, 'sub': sub, 'tps': tps, 'tvq': tvq,
+                'total': round(sub + tps + tvq, 2)}
 
     # --- Bons de travail (feuilles de production) : données pour le rapport QWeb ---
     # Routage composante → postes (chevrons), et ordre d'affichage des feuilles.
