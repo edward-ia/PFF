@@ -178,15 +178,22 @@
         <field name="header_spacing">6</field>
         <field name="dpi">90</field>
     </record>
-    <record id="action_report_pff_po" model="ir.actions.report">
-        <field name="name">Bon d'achat (Fusion)</field>
-        <field name="model">purchase.order</field>
-        <field name="report_type">qweb-pdf</field>
+    <!-- Le bon d'achat Fusion REMPLACE le rapport d'achat standard Odoo.     -->
+    <!-- On redirige les DEUX actions natives (bon de commande + demande de   -->
+    <!-- prix) vers notre gabarit et on les renomme « Bon d'achat » : le       -->
+    <!-- bouton « Imprimer » de l'en-tête sort directement le format Fusion,   -->
+    <!-- l'ancien PDF anglais « Purchase Order » disparaît (plus de doublon).  -->
+    <record id="purchase.action_report_purchase_order" model="ir.actions.report">
+        <field name="name">Bon d'achat</field>
         <field name="report_name">pff_configurateur.report_pff_po</field>
         <field name="report_file">pff_configurateur.report_pff_po</field>
         <field name="paperformat_id" ref="paperformat_pff_po"/>
-        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
-        <field name="binding_type">report</field>
+    </record>
+    <record id="purchase.action_report_purchase_quotation" model="ir.actions.report">
+        <field name="name">Bon d'achat</field>
+        <field name="report_name">pff_configurateur.report_pff_po</field>
+        <field name="report_file">pff_configurateur.report_pff_po</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
     </record>
 
     <template id="report_pff_po">
