@@ -220,6 +220,19 @@ class PffConfiguration(models.Model):
         s.append('</svg>')
         return Markup(''.join(s))
 
+    @staticmethod
+    def _fx(text):
+        """Encode les caractères non-ASCII en entités HTML numériques.
+        Le moteur PDF de l'instance rend l'UTF-8 comme du Latin-1 (accents
+        « Ã© ») ; les entités &#N; sont de l'ASCII pur, donc rendues
+        correctement quel que soit l'encodage supposé. À utiliser avec t-out."""
+        if not text:
+            return Markup('')
+        esc = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}
+        return Markup(''.join(
+            esc.get(c, c) if ord(c) < 128 else '&#%d;' % ord(c) for c in str(text)
+        ))
+
     def _get_commande_data(self):
         """Assemble les données de la commande client au format Fusion."""
         self.ensure_one()
@@ -253,17 +266,72 @@ class PffConfiguration(models.Model):
                 specs.append("COUPE-FROID : %s" % l.param_coupe)
             items.append({
                 'idx': idx,
-                'name': "%s PVC / %s sections" % (fam_labels.get(l.family, l.family), nsec),
+                'name': self._fx("%s PVC / %s sections" % (fam_labels.get(l.family, l.family), nsec)),
                 'w_in': w_in, 'h_in': h_in, 'qty': l.qty,
                 'price_unit': l.price_unit, 'subtotal': l.price_subtotal,
                 'svg': self._cmd_svg(l.family, nsec, (l.param_ouvrant or 'D') != 'G'),
-                'specs': specs,
+                'specs': [self._fx(s) for s in specs],
             })
         sub = self.amount_total
         tps = round(sub * 0.05, 2)
         tvq = round(sub * 0.09975, 2)
-        return {'items': items, 'sub': sub, 'tps': tps, 'tvq': tvq,
-                'total': round(sub + tps + tvq, 2)}
+
+        fx = self._fx
+        p = self.partner_id
+
+        def addr_block(partner):
+            cityline = ' '.join(x for x in [partner.city or '',
+                                            partner.state_id.code or '',
+                                            partner.zip or ''] if x)
+            return {
+                'name': fx(partner.name or ''),
+                'street': fx(partner.street or ''),
+                'cityline': fx(cityline),
+                'phone': fx('Tél.: ' + partner.phone if partner.phone else ''),
+            }
+
+        labels = {
+            'company_name_big': fx('PORTES ET FENÊTRES FUSION'),
+            'vendu_a': fx('VENDU À'),
+            'livre_a': fx('LIVRÉ À'),
+            'expedition': fx('EXPÉDITION'),
+            'qte': fx('Qté'),
+            'dessin_vue': fx('DESSIN - VUE EXTÉRIEURE'),
+            'company': fx('Portes et Fenêtres Fusion'),
+            'company_addr': fx('752-2, rue Hébert, Desbiens, QC G0W 1N0'),
+            'depot': fx('Dépôt :'),
+            'solde_du': fx('Solde dû :'),
+        }
+        legal = [fx(t) for t in (
+            "En conformité avec la politique d'achat de Portes et Fenêtres "
+            "Fusion, au moment de la signature de votre commande, le conseiller "
+            "a reçu votre acompte, non remboursable.",
+            "Quelques jours avant la livraison, une personne vous contactera "
+            "afin de valider la date de livraison prévue et vous mentionner le "
+            "montant restant à remettre au livreur à son arrivée.",
+            "En cas de non-paiement, les livreurs auront comme consigne de "
+            "repartir avec la marchandise et une nouvelle livraison devra être "
+            "cédulée à vos frais.",
+            "Dans la mesure où la commande ne serait pas complète, seule la "
+            "valeur des items manquants pourra être retenue.",
+        )]
+        note_ext = fx("LES CÔTÉS D'OUVRANT SONT TOUS VUS DE L'EXTÉRIEUR POUR "
+                      "LES ITEMS DE LA SOUMISSION. LES MESURES ET LA "
+                      "VÉRIFICATION DE LA SOUMISSION SONT LA RESPONSABILITÉ DU "
+                      "CLIENT.")
+        note_initial = fx("INITIAL DU CLIENT : MESURE APPROUVÉ ______     "
+                          "COULEUR APPROUVÉ ______     CÔTÉ D'OUVERTURE "
+                          "APPROUVÉ ______")
+
+        return {
+            'items': items, 'sub': sub, 'tps': tps, 'tvq': tvq,
+            'total': round(sub + tps + tvq, 2),
+            'client_ref': p.ref or p.id,
+            'soumission': self.sale_order_id.name or '',
+            'vendu': addr_block(p), 'livre': addr_block(p),
+            'L': labels, 'legal': legal,
+            'note_ext': note_ext, 'note_initial': note_initial,
+        }
 
     # --- Bons de travail (feuilles de production) : données pour le rapport QWeb ---
     # Routage composante → postes (chevrons), et ordre d'affichage des feuilles.
