@@ -292,7 +292,7 @@
                                 <div style="font-size:9px;">#Client: <span t-esc="d['client_ref']"/>, #Soumission: <span t-esc="d['soumission']"/></div>
                             </td>
                             <td style="width:33%;text-align:right;font-size:9px;color:#333;">
-                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>Page : 1
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')"/><br/>Page : 1 (MAJ 1.0.2)
                             </td>
                         </tr>
                     </table>
