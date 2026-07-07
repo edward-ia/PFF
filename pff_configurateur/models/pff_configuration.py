@@ -464,6 +464,39 @@ class PffConfiguration(models.Model):
         'battant': 'A', 'guillotine': 'GS', 'coulissant': 'CSG,F', 'fixe': 'F',
         'porte_ext': 'PE', 'porte_int': 'PI', 'porte_patio': 'PP',
     }
+    _BT_POSTE_COLORS = {
+        'Scie': '#E8720C', 'Poinçon machinage': '#E8720C', 'Soudage': '#2E9BD6',
+        'Sous-ensemble': '#C463C9', 'Assemblage': '#C463C9',
+        'Achat sur commande': '#7A7A7A', 'Validation': '#059669',
+    }
+
+    def _bt_poste_band(self, postes):
+        """Bande de postes en CHEVRONS (flèches emboîtées) façon Fusion, en SVG
+        (fiable en PDF, contrairement à clip-path). Chaque poste = une flèche
+        colorée pointant vers le suivant."""
+        if not postes:
+            return Markup('')
+        seg_w, h, p = 150.0, 30.0, 15.0  # largeur segment, hauteur, profondeur pointe
+        total = len(postes) * seg_w
+        s = ['<svg viewBox="0 0 %.0f %.0f" width="%.0f" height="%.0f" '
+             'xmlns="http://www.w3.org/2000/svg" '
+             'font-family="Arial,Helvetica,sans-serif">' % (total, h, total, h)]
+        for i, poste in enumerate(postes):
+            x = i * seg_w
+            color = self._BT_POSTE_COLORS.get(poste, '#888888')
+            if i == 0:  # bord gauche droit, pointe à droite
+                path = 'M%.1f 0 L%.1f 0 L%.1f %.1f L%.1f %.1f L%.1f %.1f Z' % (
+                    x, x + seg_w - p, x + seg_w, h / 2, x + seg_w - p, h, x, h)
+            else:  # encoche à gauche (s'emboîte), pointe à droite
+                path = ('M%.1f 0 L%.1f 0 L%.1f %.1f L%.1f %.1f L%.1f %.1f L%.1f %.1f Z'
+                        % (x, x + seg_w - p, x + seg_w, h / 2, x + seg_w - p, h,
+                           x, h, x + p, h / 2))
+            s.append('<path d="%s" fill="%s"/>' % (path, color))
+            s.append('<text x="%.1f" y="%.1f" fill="#fff" font-size="12" '
+                     'font-weight="bold" text-anchor="middle">%s</text>' % (
+                         x + seg_w / 2 + (p / 2 if i else 0), h * 0.63, poste))
+        s.append('</svg>')
+        return Markup(''.join(s))
 
     def _get_bt_data(self):
         """Prépare les données du bon de travail pour le rapport QWeb :
@@ -489,6 +522,7 @@ class PffConfiguration(models.Model):
                             'item': idx,
                             'code': c.get('code') or '',
                             'desc': c.get('desc') or '',
+                            'casier': c.get('case') or c.get('casier') or c.get('bac') or '',
                             'tiger': c.get('lng'),
                             'qte': (c.get('qte') or 1) * (line.qty or 1),
                         })
@@ -545,6 +579,21 @@ class PffConfiguration(models.Model):
 
         return {'feuilles': feuilles, 'thermos': thermos,
                 'etiquettes': etiquettes, 'validation': validation}
+
+    def _bt_data_for_workcenter(self, workcenter_name):
+        """Ordre de travail PAR POSTE : ne garde que les feuilles (composantes)
+        qui passent par ce poste. `workcenter_name` = ex. « Scie 1 », « Poinçon/
+        machinage 3 » → on déduit le poste de base (« Scie », « Poinçon machinage »)
+        et on filtre. Le thermos (Achat sur commande + Assemblage) est joint au
+        poste Assemblage."""
+        self.ensure_one()
+        parts = (workcenter_name or '').rsplit(' ', 1)
+        base = parts[0] if len(parts) == 2 and parts[1].isdigit() else (workcenter_name or '')
+        base = base.replace('/', ' ')
+        data = self._get_bt_data()
+        feuilles = [f for f in data['feuilles'] if base in f['postes']]
+        thermos = data['thermos'] if base in ('Assemblage', 'Achat sur commande') else []
+        return {'poste': base, 'feuilles': feuilles, 'thermos': thermos}
 
 
 class PffConfigurationLine(models.Model):

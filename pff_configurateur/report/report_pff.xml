@@ -168,14 +168,14 @@
     <!-- (comps_json) + les postes traversés. Tableaux (pas de flex) +       -->
     <!-- <div class="article"> pour les accents.                             -->
     <!-- ============================================================= -->
-    <record id="action_report_pff_bt_mo" model="ir.actions.report">
-        <field name="name">Bon de travail (Fusion)</field>
-        <field name="model">mrp.production</field>
-        <field name="report_type">qweb-pdf</field>
+    <!-- Le bon de travail Fusion EST l'ordre de production (un seul document) :
+         on REMPLACE le rapport « Ordre de production » standard d'Odoo par notre
+         format Fusion. Le bouton Imprimer → « Ordre de production » sort donc
+         directement notre bon de travail. Pas d'entrée séparée (évite le doublon). -->
+    <record id="mrp.action_report_production_order" model="ir.actions.report">
+        <field name="name">Ordre de production</field>
         <field name="report_name">pff_configurateur.report_pff_bt_mo</field>
         <field name="report_file">pff_configurateur.report_pff_bt_mo</field>
-        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
-        <field name="binding_type">report</field>
     </record>
 
     <template id="report_pff_bt_mo">
@@ -186,7 +186,6 @@
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
                     <t t-if="cfg">
                         <t t-set="d" t-value="cfg._get_bt_data()"/>
-                        <t t-set="pcol" t-value="{'Scie':'#E8720C','Poinçon machinage':'#E8720C','Soudage':'#2E9BD6','Sous-ensemble':'#C463C9','Assemblage':'#C463C9','Achat sur commande':'#7A7A7A','Validation':'#059669'}"/>
 
                         <!-- En-tête -->
                         <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
@@ -207,32 +206,7 @@
 
                         <!-- Feuilles de production par composante (liste de coupe réelle) -->
                         <t t-foreach="d['feuilles']" t-as="f">
-                            <div style="border:1px solid #111;margin-top:6px;">
-                                <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;" t-esc="f['name']"/>
-                                <table style="width:100%;border-collapse:collapse;">
-                                    <thead>
-                                        <tr style="border-bottom:1px solid #111;">
-                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Commande / Item</td>
-                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Pièce</td>
-                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur de coupe (mm)</td>
-                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:center;">Qté</td>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr t-foreach="f['rows']" t-as="r" style="border-bottom:1px solid #d5d5d5;">
-                                            <td style="padding:3px 6px;font-size:9px;white-space:nowrap;"><span t-esc="cfg.name"/> <b t-esc="r['item']"/></td>
-                                            <td style="padding:3px 6px;font-size:10px;"><b t-esc="r['code']"/> <span t-esc="r['desc']"/></td>
-                                            <td style="padding:3px 6px;font-size:11px;text-align:right;font-weight:bold;" t-esc="r['tiger']"/>
-                                            <td style="padding:3px 6px;font-size:10px;text-align:center;" t-esc="r['qte']"/>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div style="margin:6px 0 12px;">
-                                <span t-foreach="f['postes']" t-as="p"
-                                      t-attf-style="background:{{ pcol.get(p,'#888') }};color:#fff;padding:5px 16px;margin-right:4px;font-weight:bold;font-size:9px;"
-                                      t-esc="p"/>
-                            </div>
+                            <t t-call="pff_configurateur.report_pff_bt_feuille"/>
                         </t>
 
                         <!-- Thermos (achat sur commande) -->
@@ -252,6 +226,101 @@
                     </t>
                     <t t-else="">
                         <p style="font-size:12px;">Aucune configuration PFF n'est liée à cet ordre de fabrication (<span t-esc="mo.name"/>).</p>
+                    </t>
+                </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- Feuille de production réutilisable (une composante) : attend `f` (feuille)
+         + `cfg` (config). Colonnes Fusion exactes : COMM/ITEM (item encadré) |
+         Pièces (code + désignation + casier) | Longueur TIGER | Qté | Longueur,
+         + bande de postes en chevrons. Partagée par l'OF et l'OT par poste. -->
+    <template id="report_pff_bt_feuille">
+        <div style="border:1px solid #111;margin-top:6px;">
+            <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;" t-esc="f['name']"/>
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid #111;">
+                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;">COMM/ITEM</td>
+                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Pièces</td>
+                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur TIGER</td>
+                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:center;">Qté</td>
+                        <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="f['rows']" t-as="r" style="border-bottom:1px solid #d5d5d5;">
+                        <td style="padding:3px 6px;font-size:9px;white-space:nowrap;">
+                            <span t-esc="cfg.name"/>
+                            <span style="display:inline-block;border:1px solid #E8720C;padding:0 5px;font-weight:bold;" t-esc="r['item']"/>
+                        </td>
+                        <td style="padding:3px 6px;font-size:10px;">
+                            <b t-esc="r['code']"/> <span t-esc="r['desc']"/>
+                            <t t-if="r['casier']"><br/><span style="font-size:8px;color:#555;" t-esc="r['casier']"/></t>
+                        </td>
+                        <td style="padding:3px 6px;font-size:11px;text-align:right;font-weight:bold;" t-esc="r['tiger']"/>
+                        <td style="padding:3px 6px;font-size:10px;text-align:center;" t-esc="r['qte']"/>
+                        <td style="padding:3px 6px;font-size:10px;text-align:right;" t-esc="r['tiger']"/>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div style="margin:6px 0 12px;">
+            <t t-out="cfg._bt_poste_band(f['postes'])"/>
+        </div>
+    </template>
+
+    <!-- ============================================================= -->
+    <!-- Ordre de travail PAR POSTE (mrp.workorder) : chaque poste ne voit    -->
+    <!-- que SES composantes (feuilles filtrées via _bt_data_for_workcenter). -->
+    <!-- Entrée séparée « Ordre de travail (Fusion) » dans le menu Imprimer.  -->
+    <!-- ============================================================= -->
+    <record id="action_report_pff_bt_wo" model="ir.actions.report">
+        <field name="name">Ordre de travail (Fusion)</field>
+        <field name="model">mrp.workorder</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pff_configurateur.report_pff_bt_wo</field>
+        <field name="report_file">pff_configurateur.report_pff_bt_wo</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_workorder"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_pff_bt_wo">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="wo">
+                <t t-set="cfg" t-value="wo.env['pff.configuration'].search([('name', '=', wo.production_id.origin)], limit=1)"/>
+                <div class="article" t-att-data-oe-model="wo._name" t-att-data-oe-id="wo.id">
+                <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
+                    <t t-if="cfg">
+                        <t t-set="wd" t-value="cfg._bt_data_for_workcenter(wo.workcenter_id.name)"/>
+                        <!-- En-tête -->
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+                            <tr style="vertical-align:top;">
+                                <td style="width:58%;">
+                                    <div style="font-weight:bold;font-size:16px;color:#0a63a8;">PORTES ET FENÊTRES FUSION</div>
+                                    <div style="font-weight:bold;font-size:14px;margin-top:4px;">Ordre de travail — <span t-esc="wo.workcenter_id.name"/></div>
+                                </td>
+                                <td style="width:42%;text-align:right;font-size:10px;color:#333;">
+                                    <b>OF</b> <span t-esc="wo.production_id.name"/><br/>
+                                    <b>Commande</b> <span t-esc="cfg.name"/><br/>
+                                    <b>Opération</b> <span t-esc="wo.name"/><br/>
+                                    <b>Produit</b> <span t-esc="wo.product_id.display_name"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <t t-if="wd['feuilles']">
+                            <t t-foreach="wd['feuilles']" t-as="f">
+                                <t t-call="pff_configurateur.report_pff_bt_feuille"/>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <p style="font-size:11px;">Aucune pièce à produire à ce poste pour cette commande.</p>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <p style="font-size:12px;">Aucune configuration PFF liée (<span t-esc="wo.production_id.name"/>).</p>
                     </t>
                 </div>
                 </div>
