@@ -199,9 +199,10 @@ class PffConfiguration(models.Model):
     def _create_glass_po(self):
         """Crée un purchase.order BROUILLON avec une ligne par thermos (mesures
         capturées par le configurateur → aucun recalcul). Silencieux : renvoie
-        None sans bloquer s'il n'y a pas de vitrage. Le FOURNISSEUR est laissé
-        VIDE : c'est du master data géré par l'utilisateur (Contacts) ; l'acheteur
-        le choisit sur le bon d'achat avant de valider."""
+        None sans bloquer s'il n'y a pas de vitrage. Le FOURNISSEUR est lu depuis
+        le produit Thermos (onglet Achats), que l'utilisateur configure lui-même
+        (ex. « Multiver »). Si aucun fournisseur n'y est réglé, le bon d'achat est
+        simplement sauté (non bloquant)."""
         self.ensure_one()
         tmpl = self.env.ref('pff_configurateur.product_pff_thermos',
                             raise_if_not_found=False)
@@ -234,8 +235,15 @@ class PffConfiguration(models.Model):
                 }))
         if not po_lines:
             return False
-        # Fournisseur laissé VIDE : l'acheteur le choisit sur le bon d'achat.
+        # Fournisseur = celui configuré sur le produit Thermos (onglet Achats).
+        # Master data géré par l'utilisateur (il y met « Multiver »). Purchase.order
+        # EXIGE un fournisseur ; si aucun n'est configuré, on saute le bon d'achat
+        # SANS bloquer la mise en fabrication (les OF se créent quand même).
+        vendor = product.seller_ids[:1].partner_id
+        if not vendor:
+            return False
         po = self.env['purchase.order'].create({
+            'partner_id': vendor.id,
             'origin': self.name,
             'order_line': po_lines,
         })
