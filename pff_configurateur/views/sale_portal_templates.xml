@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Portail client : ajoute un bloc « Vos fenêtres » (dessin 2D + specs façon
+         Fusion) avant le tableau des lignes, sur la page portail du devis/commande.
+         `sudo` : le client au portail n'a pas les droits sur pff.configuration. -->
+    <template id="portal_pff_windows" inherit_id="sale.sale_order_portal_content"
+              name="PFF — fenêtres sur la page portail">
+        <xpath expr="//section[@id='details']" position="before">
+            <t t-set="pff_cfg" t-value="sale_order.env['pff.configuration'].sudo().search([('sale_order_id', '=', sale_order.id)], limit=1)"/>
+            <t t-if="pff_cfg">
+                <t t-set="pff_data" t-value="pff_cfg._get_commande_data()"/>
+                <section id="pff_windows" class="mt-4 mb-3">
+                    <h4 class="mb-3">Vos fenêtres</h4>
+                    <div t-foreach="pff_data['items']" t-as="it"
+                         class="row align-items-start border-bottom py-3 g-3">
+                        <div class="col-12 col-md-4 text-center">
+                            <div style="display:inline-block;border:1px solid #000;padding:6px;background:#fff;">
+                                <t t-out="it['svg']"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-8">
+                            <div class="fw-bold"><t t-esc="it['name']"/></div>
+                            <div class="text-muted small mb-2">
+                                <t t-esc="it['w_in']"/> x <t t-esc="it['h_in']"/> po
+                                · <t t-esc="it['ratio']"/>
+                                · Qté <t t-esc="it['qty']"/>
+                                · <t t-esc="it['subtotal_f']"/>
+                            </div>
+                            <div class="small" style="line-height:1.5;">
+                                <div t-foreach="it['specs']" t-as="sp"><t t-esc="sp"/></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </t>
+        </xpath>
+    </template>
+
+</odoo>

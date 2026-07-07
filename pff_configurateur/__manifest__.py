@@ -1,6 +1,6 @@
 {
     'name': 'Configurateur',
-    'version': '19.0.1.0.7',
+    'version': '19.0.1.0.8',
     'summary': "Configurateur de portes et fenêtres PVC, commandes et bons de travail",
     'author': 'Edward IA',
     'category': 'Manufacturing',
@@ -14,6 +14,7 @@
         'views/crm_lead_views.xml',
         'views/menus.xml',
         'report/report_pff.xml',
+        'views/sale_portal_templates.xml',
     ],
     'assets': {
         'web.assets_backend': [
