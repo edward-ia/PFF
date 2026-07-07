@@ -162,6 +162,104 @@
     </template>
 
     <!-- ============================================================= -->
+    <!-- Bon de travail (Fusion) IMPRIMABLE DEPUIS L'OF (mrp.production).   -->
+    <!-- Retrouve la config PFF via l'origine de l'OF, puis rend les feuilles-->
+    <!-- de production par composante avec les VRAIES longueurs de coupe     -->
+    <!-- (comps_json) + les postes traversés. Tableaux (pas de flex) +       -->
+    <!-- <div class="article"> pour les accents.                             -->
+    <!-- ============================================================= -->
+    <record id="action_report_pff_bt_mo" model="ir.actions.report">
+        <field name="name">Bon de travail (Fusion)</field>
+        <field name="model">mrp.production</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pff_configurateur.report_pff_bt_mo</field>
+        <field name="report_file">pff_configurateur.report_pff_bt_mo</field>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_pff_bt_mo">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="mo">
+                <t t-set="cfg" t-value="mo.env['pff.configuration'].search([('name', '=', mo.origin)], limit=1)"/>
+                <div class="article" t-att-data-oe-model="mo._name" t-att-data-oe-id="mo.id">
+                <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
+                    <t t-if="cfg">
+                        <t t-set="d" t-value="cfg._get_bt_data()"/>
+                        <t t-set="pcol" t-value="{'Scie':'#E8720C','Poinçon machinage':'#E8720C','Soudage':'#2E9BD6','Sous-ensemble':'#C463C9','Assemblage':'#C463C9','Achat sur commande':'#7A7A7A','Validation':'#059669'}"/>
+
+                        <!-- En-tête -->
+                        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+                            <tr style="vertical-align:top;">
+                                <td style="width:58%;">
+                                    <img t-if="mo.company_id.logo" t-att-src="image_data_uri(mo.company_id.logo)" style="max-height:48px;max-width:210px;"/>
+                                    <div t-else="" style="font-weight:bold;font-size:16px;color:#0a63a8;">PORTES ET FENÊTRES FUSION</div>
+                                    <div style="font-weight:bold;font-size:14px;margin-top:4px;">Bon de travail</div>
+                                </td>
+                                <td style="width:42%;text-align:right;font-size:10px;color:#333;">
+                                    <b>OF</b> <span t-esc="mo.name"/><br/>
+                                    <b>Commande</b> <span t-esc="cfg.name"/><br/>
+                                    <b>Produit</b> <span t-esc="mo.product_id.display_name"/><br/>
+                                    <b>Qté</b> <span t-esc="int(mo.product_qty)"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Feuilles de production par composante (liste de coupe réelle) -->
+                        <t t-foreach="d['feuilles']" t-as="f">
+                            <div style="border:1px solid #111;margin-top:6px;">
+                                <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;" t-esc="f['name']"/>
+                                <table style="width:100%;border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="border-bottom:1px solid #111;">
+                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Commande / Item</td>
+                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;">Pièce</td>
+                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:right;">Longueur de coupe (mm)</td>
+                                            <td style="font-weight:bold;font-size:9px;padding:4px 6px;text-align:center;">Qté</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="f['rows']" t-as="r" style="border-bottom:1px solid #d5d5d5;">
+                                            <td style="padding:3px 6px;font-size:9px;white-space:nowrap;"><span t-esc="cfg.name"/> <b t-esc="r['item']"/></td>
+                                            <td style="padding:3px 6px;font-size:10px;"><b t-esc="r['code']"/> <span t-esc="r['desc']"/></td>
+                                            <td style="padding:3px 6px;font-size:11px;text-align:right;font-weight:bold;" t-esc="r['tiger']"/>
+                                            <td style="padding:3px 6px;font-size:10px;text-align:center;" t-esc="r['qte']"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin:6px 0 12px;">
+                                <span t-foreach="f['postes']" t-as="p"
+                                      t-attf-style="background:{{ pcol.get(p,'#888') }};color:#fff;padding:5px 16px;margin-right:4px;font-weight:bold;font-size:9px;"
+                                      t-esc="p"/>
+                            </div>
+                        </t>
+
+                        <!-- Thermos (achat sur commande) -->
+                        <t t-if="d['thermos']">
+                            <div style="border:1px solid #111;margin-top:6px;">
+                                <div style="font-weight:bold;font-size:12px;padding:4px 8px;border-bottom:1px solid #111;">THERMOS — achat sur commande</div>
+                                <table style="width:100%;border-collapse:collapse;">
+                                    <tbody>
+                                        <tr t-foreach="d['thermos']" t-as="t" style="border-bottom:1px solid #d5d5d5;">
+                                            <td style="padding:3px 6px;font-size:10px;">(<span t-esc="cfg.name"/>/<span t-esc="t['item']"/>) <span t-esc="t['desc']"/></td>
+                                            <td style="padding:3px 6px;font-size:10px;text-align:center;width:90px;" t-esc="t['qte']"/>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <p style="font-size:12px;">Aucune configuration PFF n'est liée à cet ordre de fabrication (<span t-esc="mo.name"/>).</p>
+                    </t>
+                </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- ============================================================= -->
     <!-- Bon d'achat verre — reprend le FORMAT Fusion (« Commande achat ») -->
     <!-- Données 100% dynamiques : n° = po.name, date = maintenant,        -->
     <!-- Envoyé par = utilisateur, fournisseur + adresse = fiche réelle.   -->
