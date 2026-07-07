@@ -14,6 +14,19 @@ FAMILIES = [
     ('porte_patio', 'Porte patio'),
 ]
 
+# Correspondance famille du configurateur → référence interne du PRODUIT FABRIQUÉ
+# (créé/géré en UI). Sert au « Lancer en fabrication » pour créer l'ordre de
+# fabrication du bon produit → sa nomenclature route les OT vers les postes.
+FAMILY_PRODUCT_CODE = {
+    'battant': 'PFF-BATTANT',
+    'guillotine': 'PFF-GUILLOTINE',
+    'coulissant': 'PFF-COULISSANT',
+    'fixe': 'PFF-FIXE',
+    'porte_ext': 'PFF-PORTE-ENT',
+    'porte_int': 'PFF-PORTE-INT',
+    'porte_patio': 'PFF-PORTE-PATIO',
+}
+
 
 class PffConfiguration(models.Model):
     _name = 'pff.configuration'
@@ -42,6 +55,8 @@ class PffConfiguration(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='Devis', readonly=True, copy=False)
     purchase_order_id = fields.Many2one('purchase.order', string="Bon d'achat verre",
                                         readonly=True, copy=False)
+    production_count = fields.Integer(string="Ordres de fabrication",
+                                      compute='_compute_production_count')
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
 
     @api.model_create_multi
@@ -64,11 +79,67 @@ class PffConfiguration(models.Model):
     # --- Statuts ---
     def action_production(self):
         for rec in self:
+            # A-t-on déjà généré des OF pour cette commande ? (évite les doublons
+            # si on repasse le bouton).
+            already = self.env['mrp.production'].search_count([('origin', '=', rec.name)])
             rec.write({'state': 'production'})
             # Automatisation : à la mise en fabrication, on crée le bon d'achat
             # verre BROUILLON (silencieux). L'acheteur assigne le fournisseur et valide.
             if not rec.purchase_order_id:
                 rec._create_glass_po()
+            # Et on lance la fabrication : un OF par produit configuré.
+            if not already:
+                rec._create_manufacturing_orders()
+
+    def _create_manufacturing_orders(self):
+        """Au « Lancer en fabrication » : crée un ordre de fabrication par produit
+        configuré, routé vers la nomenclature de sa famille. La nomenclature porte
+        les opérations → les ordres de travail tombent automatiquement aux postes."""
+        self.ensure_one()
+        Product = self.env['product.product']
+        Bom = self.env['mrp.bom']
+        Production = self.env['mrp.production']
+        for line in self.line_ids:
+            code = FAMILY_PRODUCT_CODE.get(line.family)
+            if not code:
+                continue
+            product = Product.search([('default_code', '=', code)], limit=1)
+            if not product:
+                continue
+            bom = Bom.search([
+                ('product_tmpl_id', '=', product.product_tmpl_id.id),
+                '|', ('product_id', '=', product.id), ('product_id', '=', False),
+            ], limit=1)
+            mo = Production.create({
+                'product_id': product.id,
+                'product_qty': line.qty or 1,
+                'product_uom_id': product.uom_id.id,
+                'bom_id': bom.id if bom else False,
+                'origin': self.name,
+            })
+            mo.action_confirm()
+            # Filet de sécurité : si la confirmation n'a pas généré les ordres de
+            # travail alors que la nomenclature a des opérations, on les crée.
+            if bom and bom.operation_ids and not mo.workorder_ids \
+                    and hasattr(mo, '_create_workorder'):
+                mo._create_workorder()
+        return True
+
+    def _compute_production_count(self):
+        MO = self.env['mrp.production']
+        for rec in self:
+            rec.production_count = MO.search_count([('origin', '=', rec.name)]) if rec.name else 0
+
+    def action_view_productions(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Ordres de fabrication',
+            'res_model': 'mrp.production',
+            'domain': [('origin', '=', self.name)],
+            'view_mode': 'list,form',
+            'target': 'current',
+        }
 
     def action_done(self):
         self.write({'state': 'done'})
@@ -128,8 +199,9 @@ class PffConfiguration(models.Model):
     def _create_glass_po(self):
         """Crée un purchase.order BROUILLON avec une ligne par thermos (mesures
         capturées par le configurateur → aucun recalcul). Silencieux : renvoie
-        None sans bloquer s'il n'y a pas de vitrage. Le fournisseur (défaut
-        Multiver) et la confirmation restent à la charge de l'acheteur."""
+        None sans bloquer s'il n'y a pas de vitrage. Le FOURNISSEUR est laissé
+        VIDE : c'est du master data géré par l'utilisateur (Contacts) ; l'acheteur
+        le choisit sur le bon d'achat avant de valider."""
         self.ensure_one()
         tmpl = self.env.ref('pff_configurateur.product_pff_thermos',
                             raise_if_not_found=False)
@@ -162,15 +234,8 @@ class PffConfiguration(models.Model):
                 }))
         if not po_lines:
             return False
-        # Fournisseur par défaut (l'acheteur peut le changer avant de valider)
-        vendor = self.env.ref('pff_configurateur.res_partner_multiver',
-                              raise_if_not_found=False)
-        if not vendor:
-            vendor = self.env['res.partner'].search([('name', '=', 'Multiver')], limit=1)
-        if not vendor:
-            vendor = self.env['res.partner'].create({'name': 'Multiver', 'supplier_rank': 1})
+        # Fournisseur laissé VIDE : l'acheteur le choisit sur le bon d'achat.
         po = self.env['purchase.order'].create({
-            'partner_id': vendor.id,
             'origin': self.name,
             'order_line': po_lines,
         })

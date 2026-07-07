@@ -60,6 +60,14 @@
                                 invisible="not purchase_order_id">
                             <div class="o_stat_info"><span class="o_stat_text">Bon d'achat</span></div>
                         </button>
+                        <button name="action_view_productions" type="object"
+                                class="oe_stat_button" icon="fa-wrench"
+                                invisible="production_count == 0">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="production_count"/></span>
+                                <span class="o_stat_text">Fabrication</span>
+                            </div>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>

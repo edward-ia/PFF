@@ -16,10 +16,7 @@
         <field name="purchase_ok" eval="True"/>
         <field name="list_price">0.0</field>
     </record>
-
-    <record id="res_partner_multiver" model="res.partner">
-        <field name="name">Multiver</field>
-        <field name="company_type">company</field>
-        <field name="supplier_rank">1</field>
-    </record>
+    <!-- Le fournisseur du verre (ex. Multiver) N'EST PAS créé ici : c'est du
+         master data que l'utilisateur gère dans Contacts. Le bon d'achat verre
+         est créé sans fournisseur ; l'acheteur le choisit avant de valider. -->
 </odoo>
