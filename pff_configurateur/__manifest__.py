@@ -1,8 +1,8 @@
 {
     'name': 'Configurateur',
-    'version': '19.0.1.0.4',
+    'version': '19.0.1.0.5',
     'summary': "Configurateur de portes et fenêtres PVC, commandes et bons de travail",
-    'author': 'Edward IA / KerningCode',
+    'author': 'Edward IA',
     'category': 'Manufacturing',
     'depends': ['base', 'mail', 'crm', 'sale_management', 'purchase', 'product'],
     'data': [
