@@ -1,6 +1,6 @@
 {
     'name': 'Configurateur',
-    'version': '19.0.1.0.6',
+    'version': '19.0.1.0.7',
     'summary': "Configurateur de portes et fenêtres PVC, commandes et bons de travail",
     'author': 'Edward IA',
     'category': 'Manufacturing',

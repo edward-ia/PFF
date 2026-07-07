@@ -273,16 +273,16 @@
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Même rapport accessible depuis le devis dans Ventes (sale.order) -->
-    <record id="action_report_pff_commande_sale" model="ir.actions.report">
+    <!-- Le format Fusion REMPLACE le rapport de devis/commande standard d'Odoo.
+         Le bouton « Imprimer » du devis, le PDF « Voir les détails » du portail client
+         et la pièce jointe des emails passent TOUS par cette action native
+         `sale.action_report_saleorder` → en la redirigeant, tous sortent en format Fusion.
+         (Instance dédiée PFF : toutes les ventes sont des fenêtres configurées.) -->
+    <record id="sale.action_report_saleorder" model="ir.actions.report">
         <field name="name">Commande client (Fusion)</field>
-        <field name="model">sale.order</field>
-        <field name="report_type">qweb-pdf</field>
         <field name="report_name">pff_configurateur.report_pff_commande_sale</field>
         <field name="report_file">pff_configurateur.report_pff_commande_sale</field>
         <field name="paperformat_id" ref="paperformat_pff_po"/>
-        <field name="binding_model_id" ref="sale.model_sale_order"/>
-        <field name="binding_type">report</field>
     </record>
 
     <!-- Corps réutilisable de la commande client : attend une pff.configuration dans `cfg`.
