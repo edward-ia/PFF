@@ -273,14 +273,29 @@
         <field name="binding_type">report</field>
     </record>
 
-    <template id="report_pff_commande">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="doc">
-                <t t-set="d" t-value="doc._get_commande_data()"/>
-                <t t-set="p" t-value="doc.partner_id"/>
-                <!-- Le <div class="article"> est REQUIS : sans lui, Odoo n'enveloppe pas
-                     le corps dans minimal_layout et perd le charset UTF-8 (accents cassés). -->
-                <div class="article" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id">
+    <!-- Même rapport accessible depuis le devis dans Ventes (sale.order) -->
+    <record id="action_report_pff_commande_sale" model="ir.actions.report">
+        <field name="name">Commande client (Fusion)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pff_configurateur.report_pff_commande_sale</field>
+        <field name="report_file">pff_configurateur.report_pff_commande_sale</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Corps réutilisable de la commande client : attend une pff.configuration dans `cfg`.
+         Appelé par le Configurateur ET par le devis (Ventes) via t-call. `so` = devis lié
+         (porte la signature électronique du portail client + sa date). -->
+    <template id="report_pff_commande_doc">
+        <t t-set="doc" t-value="cfg"/>
+        <t t-set="d" t-value="doc._get_commande_data()"/>
+        <t t-set="p" t-value="doc.partner_id"/>
+        <t t-set="so" t-value="doc.sale_order_id"/>
+        <!-- Le <div class="article"> est REQUIS : sans lui, Odoo n'enveloppe pas
+             le corps dans minimal_layout et perd le charset UTF-8 (accents cassés). -->
+        <div class="article" t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id">
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
 
                     <!-- En-tête -->
@@ -376,7 +391,7 @@
                         <tr style="vertical-align:top;">
                             <td style="width:60%;padding:4px;">
                                 <b>Portes et Fenêtres Fusion</b><br/>752-2, rue Hébert, Desbiens, QC G0W 1N0<br/>418 346-8000<span style="display:inline-block;width:12px;"></span>pffusion.com<span style="display:inline-block;width:12px;"></span>RBQ 5766-1746-01<br/><br/>
-                                Acheteur : ____________________<span style="display:inline-block;width:16px;"></span>Date : __________<br/><br/>
+                                <t t-if="so and so.signature">Acheteur : <img t-att-src="image_data_uri(so.signature)" style="height:30px;vertical-align:middle;"/><span style="display:inline-block;width:14px;"></span>Date : <span t-esc="context_timestamp(so.signed_on).strftime('%Y-%m-%d') if so.signed_on else ''"/><br/><span style="font-size:8px;color:#333;">Signé électroniquement par <span t-esc="so.signed_by or p.name"/></span><br/><br/></t><t t-else="">Acheteur : ____________________<span style="display:inline-block;width:16px;"></span>Date : __________<br/><br/></t>
                                 Vendeur : ____________________<span style="display:inline-block;width:16px;"></span>Date : __________<br/><br/>
                                 <span style="font-size:8px;">SOUMISSION VALIDE 30 JOURS</span>
                             </td>
@@ -406,6 +421,34 @@
 
                 </div>
                 </div>
+    </template>
+
+    <!-- Wrapper Configurateur (impression depuis une fiche pff.configuration) -->
+    <template id="report_pff_commande">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="cfg" t-value="doc"/>
+                <t t-call="pff_configurateur.report_pff_commande_doc"/>
+            </t>
+        </t>
+    </template>
+
+    <!-- Wrapper Ventes (impression depuis le devis) : retrouve la config PFF liée -->
+    <template id="report_pff_commande_sale">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="order">
+                <t t-set="cfg" t-value="order.env['pff.configuration'].search([('sale_order_id', '=', order.id)], limit=1)"/>
+                <t t-if="cfg">
+                    <t t-call="pff_configurateur.report_pff_commande_doc"/>
+                </t>
+                <t t-else="">
+                    <div class="article" t-att-data-oe-model="order._name" t-att-data-oe-id="order.id">
+                    <div class="page" style="font-family:Arial,Helvetica,sans-serif;padding:24px;font-size:12px;">
+                        Aucune configuration PFF n'est liée à ce devis (<span t-esc="order.name"/>).
+                        Le format « Commande client (Fusion) » n'est disponible que pour les devis issus du Configurateur.
+                    </div>
+                    </div>
+                </t>
             </t>
         </t>
     </template>
