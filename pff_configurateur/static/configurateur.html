@@ -74,32 +74,11 @@
   .bt-sec-left{ display:flex; align-items:center; gap:10px; }
   .stsel{ width:auto; padding:2px 7px; font-size:11px; }
   .bt-tbl td.cas{ color:var(--muted); font-size:11px; }
-  .etq{ width:340px; max-width:100%; border:1px solid #cdd6e0; border-radius:4px; background:#fff; color:#1a1d22; padding:8px 10px; margin:8px 0; }
-  .etq-h{ display:flex; justify-content:space-between; font-size:12px; font-weight:700; border-bottom:1px solid #1a1d22; padding-bottom:3px; }
-  .etq-cli{ font-size:11px; margin:3px 0; }
-  .etq-t{ font-size:11px; font-weight:600; border-top:1px solid #ccc; border-bottom:1px solid #ccc; padding:3px 0; margin:3px 0; }
-  .etq-body{ font-size:10px; white-space:pre-wrap; line-height:1.5; font-family:Consolas,monospace; }
-  .barcode{ height:34px; margin-top:6px; background:repeating-linear-gradient(90deg,#1a1d22 0,#1a1d22 2px,#fff 2px,#fff 4px,#1a1d22 4px,#1a1d22 5px,#fff 5px,#fff 9px,#1a1d22 9px,#1a1d22 11px,#fff 11px,#fff 13px); }
-  .barcode-txt{ font-size:11px; letter-spacing:.3em; text-align:center; color:#1a1d22; }
   /* ---- Commande (chips) ---- */
   .orderlist{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; max-width:250px; }
   .chip{ display:inline-flex; align-items:center; gap:5px; background:#1b1f25; border:1px solid var(--line); border-radius:10px; padding:2px 6px 2px 8px; font-size:10px; }
   .chip b{ cursor:pointer; color:var(--bad); font-size:13px; line-height:1; }
   .chip.clr{ cursor:pointer; color:var(--warn); }
-  /* ---- Assemblage : étiquettes ---- */
-  .etq-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; }
-  .etq2{ display:grid; grid-template-columns:1fr 44px; gap:4px; border:1px solid #cdd6e0; background:#fff; color:#111; padding:8px 10px; border-radius:4px; }
-  .etq2-box{ border:1px solid #333; padding:4px 6px; }
-  .etq2 .small{ font-size:8px; color:#555; }
-  .etq2 .er{ display:flex; justify-content:space-between; font-size:12px; border-bottom:1px solid #111; padding-bottom:2px; }
-  .etq2 .er2{ font-size:9px; border-bottom:1px solid #ccc; padding:1px 0; }
-  .etq2 .er3{ font-size:10px; font-weight:600; padding:3px 0; }
-  .etq2 .er4{ display:flex; gap:6px; font-size:9px; align-items:flex-start; padding-top:2px; }
-  .etq2-bul{ font-size:9px; white-space:pre-wrap; line-height:1.45; font-family:Consolas,monospace; margin:4px 0; color:#111; }
-  .etq2-side{ display:flex; flex-direction:column; align-items:center; }
-  .etq2-cmd{ display:flex; flex-direction:column; align-items:center; font-weight:800; font-size:19px; line-height:1.0; color:#111; }
-  .etq2-itemno{ font-size:30px; font-weight:800; margin-top:12px; color:#111; }
-  .etq2 .barcode{ margin-top:6px; }
   /* ---- En-tête d'item (onglets données multi-produits) ---- */
   .item-h{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--accent); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
   .item-h:first-child{ margin-top:2px; }
@@ -204,7 +183,6 @@
         <div class="tab" data-t="decoupe">Découpe & composants</div>
         <div class="tab" data-t="thermos">Thermos (achat)</div>
         <div class="tab" data-t="bons">Bons de travail</div>
-        <div class="tab" data-t="assemblage">Assemblage</div>
         <div class="tab" data-t="valid">Validations</div>
         <div class="tab" data-t="unites">Unités</div>
       </div>
@@ -582,8 +560,8 @@ function draw2D(s){
 let ORDER=[]; const ORDER_NO='031735';
 function snapshot(){ return {...state()}; }
 function orderItems(){ return ORDER.length?ORDER:[{s:snapshot(),qty:Math.max(1,Math.round(+ui('itemQty').value||1))}]; }
-function addToOrder(){ const q=Math.max(1,Math.round(+ui('itemQty').value||1)); ORDER.push({s:snapshot(),qty:q}); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
-function removeItem(i){ ORDER.splice(i,1); renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); }
+function addToOrder(){ const q=Math.max(1,Math.round(+ui('itemQty').value||1)); ORDER.push({s:snapshot(),qty:q}); renderOrderList(); updatePrice(); if(TAB==='bons') renderTab(); }
+function removeItem(i){ ORDER.splice(i,1); renderOrderList(); updatePrice(); if(TAB==='bons') renderTab(); }
 function renderOrderList(){
   const el=ui('orderList'); if(!el) return;
   if(!ORDER.length){ el.innerHTML='<span class="pill">Aucun produit ajouté — les onglets affichent le produit en cours comme item 1.</span>'; return; }
@@ -649,71 +627,12 @@ function renderBons(){
   return html;
 }
 
-/* ===== ASSEMBLAGE — étiquettes (calqué sur Assemblage.pdf) ===== */
-const PIECES_FAM={ battant:'P18G-Auv, P18D-Auv, P18A, R18A, T380', guillotine:'Barrure coul guillotine auto', coulissant:'Barrure coul guillotine auto', porte_patio:'Barrure patio multipoints', porte_ext:'Serrure multipoints', fixe:'—' };
-const SECCODE={ battant:'A', guillotine:'GS', fixe:'F', porte_ext:'P', porte_patio:'PP' };
-function frnum(mm){ return (Math.round(mm*10)/10).toString().replace('.',','); }
-function secCode(s){ if(s.family==='coulissant') return 'CSG'+',F'.repeat(Math.max(0,s.sections-1)); return SECCODE[s.family]||''; }
-function nbSections(s){ return (s.family==='coulissant'||s.family==='porte_patio')?s.sections:1; }
-function meneauTxt(s){ if(s.family==='guillotine') return `1: ${Math.round(s.W)}, 1: ${Math.round(s.H/2)}`;
-  if(s.family==='coulissant'){ const sw=Math.round(s.W/s.sections); return Array.from({length:s.sections},()=>'1: '+sw).join(', '); } return ''; }
-function miniSvg(s){ const sc=Math.min(74/s.W,52/s.H),w=s.W*sc,hh=s.H*sc,mu='#555';
-  let g=`<svg width="${w+4}" height="${hh+4}"><rect x="2" y="2" width="${w}" height="${hh}" fill="#eef2f5" stroke="#333"/>`;
-  if(s.family==='coulissant'||s.family==='porte_patio'){ for(let i=1;i<s.sections;i++) g+=`<line x1="${2+w/s.sections*i}" y1="2" x2="${2+w/s.sections*i}" y2="${2+hh}" stroke="${mu}"/>`; }
-  if(s.family==='guillotine') g+=`<line x1="2" y1="${2+hh/2}" x2="${2+w}" y2="${2+hh/2}" stroke="${mu}"/>`;
-  if(s.family==='battant'){ const cx=2+w/2; g+=`<path d="M${2+w*0.1} ${2+hh*0.9} L${cx} ${2+hh*0.1} L${2+w*0.9} ${2+hh*0.9}" fill="none" stroke="${mu}"/>`; }
-  if(s.family==='porte_ext'||s.family==='porte_int') g+=`<rect x="${2+w*0.16}" y="${2+hh*0.12}" width="${w*0.68}" height="${hh*0.78}" fill="none" stroke="${mu}"/>`;
-  return g+'</svg>';
-}
-function etqCard(it,idx){
-  const s=it.s, fam=FAMILIES[s.family], dimC=`${frnum(s.W)} x ${frnum(s.H)} mm.`;
-  const voletCode=(derive(s).comps.find(c=>c.grp==='Volet')||{}).code||'';
-  const moul=s.moulure==='none'?`Aucune (${dimC})`:`Brique ${s.moulure==='j'?'J-trim':s.moulure+'″'} (${dimC})`;
-  const cmd=ORDER_NO.split('').map(d=>`<span>${d}</span>`).join('');
-  const bullets=[
-    `- CADRE : ${s.cadreNom}`,
-    voletCode?`- VOLET : No article : ${voletCode}`:null,
-    s.family==='guillotine'?'- BALANCE: RESSORT 5LBS COURT + RESSORT 6LBS MOYEN':null,
-    `- VERRE : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir`,
-    `- FINITION INT.: ${s.soufflage==='none'?'Aucune':'Ext PVC '+s.soufflage+'″ Fermée ('+PROFILS.soufflage+'), Épais (totale): 10″, Env. à part'}`,
-    meneauTxt(s)?`- MENEAUX: ${meneauTxt(s)}`:null,
-    `- PIÈCES: ${PIECES_FAM[s.family]||'—'}`,
-    s.moust?'- MOUSTIQUAIRE : Fibre de verre':null,
-    usesCoupeFroid(s.family)?`- COUPE-FROID : ${s.coupe}`:null,
-    `- QUINCAILLERIE : ${s.quinc}`,
-  ].filter(Boolean).join('\n');
-  return `<div class="etq2">
-    <div class="etq2-main">
-      <div class="etq2-box">
-        <div class="small"># Commande</div>
-        <div class="er"><b>${ORDER_NO} \\ ${idx+1}</b><b>015980</b></div>
-        <div class="er2"><span class="small">LIVRÉ À</span> <b>Pierre Naud inc. (Lac-Aux-Sables)</b></div>
-        <div class="er2"><span class="small">VENDU À</span> Pierre Naud inc. (Lac-Aux-Sables)</div>
-        <div class="er3">${fam.code} / ${nbSections(s)} sections ${secCode(s)}</div>
-        <div class="er4">${miniSvg(s)}<span>CADRE : ${dimC}<br>MOUL.EXT.: ${moul}</span></div>
-      </div>
-      <div class="etq2-bul">${bullets}</div>
-      <div class="barcode"></div><div class="barcode-txt">S913${81+idx}TA</div>
-    </div>
-    <div class="etq2-side"><div class="etq2-cmd">${cmd}</div><div class="etq2-itemno">${idx+1}</div></div>
-  </div>`;
-}
-function renderAssemblage(){
-  const items=orderItems();
-  const cards=items.map((it,idx)=>etqCard(it,idx)).join('');
-  return `<div class="bt-head"><div><b>ASSEMBLAGE — étiquettes</b> <span class="pill">À assembler à la fin</span></div>
-    <div class="pill">Commande ${ORDER_NO} · ${items.length} étiquette(s)</div></div>
-    <div class="etq-grid">${cards}</div>
-    <div class="note">Une <b>étiquette par item</b> (n° commande vertical + n° item + code-barres + quincaillerie). Calqué sur l’étape « Assemblage des fenêtres » de Fusion. Codes pièces / n° code-barres = placeholders à valider.</div>`;
-}
-
 /* ===== PANNEAU DONNÉES ===== */
 let TAB='dessin';
 function itemHeader(it,idx){ const s=it.s; return `<div class="item-h"><span class="item-no">${idx+1}</span> ${FAMILIES[s.family].fr} · ${fmt(s.W)} × ${fmt(s.H)}${it.qty>1?' · ×'+it.qty:''}</div>`; }
 function renderTab(){
   const body=ui('tabbody');
   if(TAB==='bons'){ body.innerHTML=renderBons(); return; }
-  if(TAB==='assemblage'){ body.innerHTML=renderAssemblage(); return; }
   const items=orderItems(); let html='';
   items.forEach((it,idx)=>{
     const s=it.s, dv=derive(s); html+=itemHeader(it,idx);
@@ -817,7 +736,7 @@ function pairSliders(){ document.querySelectorAll('input[type=range]').forEach(r
 ['family','w','h','unit','cadre','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
 ui('tabs').addEventListener('click',e=>{ if(!e.target.dataset.t)return; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); e.target.classList.add('active'); TAB=e.target.dataset.t; renderTab(); });
 ui('addItem').addEventListener('click',addToOrder);
-ui('orderList').addEventListener('click',e=>{ if(e.target.dataset.clr){ ORDER=[]; renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab(); } else if(e.target.dataset.i!==undefined) removeItem(+e.target.dataset.i); });
+ui('orderList').addEventListener('click',e=>{ if(e.target.dataset.clr){ ORDER=[]; renderOrderList(); updatePrice(); if(TAB==='bons') renderTab(); } else if(e.target.dataset.i!==undefined) removeItem(+e.target.dataset.i); });
 ui('tabbody').addEventListener('change',e=>{
   if(e.target.id==='btPoste'){ BT_POSTE=e.target.value; renderTab(); }
   else if(e.target.classList.contains('stsel')){ POSTE_ASSIGN[e.target.dataset.key]=e.target.value; }
@@ -926,7 +845,7 @@ function restoreOrder(items){
   if(!items.length) return;
   restoreState(items[0].config);
   ORDER=[]; if(ui('itemQty')) ui('itemQty').value=items[0].qty||1;
-  renderOrderList(); updatePrice(); if(TAB==='bons'||TAB==='assemblage') renderTab();
+  renderOrderList(); updatePrice(); if(TAB==='bons') renderTab();
 }
 window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_restore') restoreOrder(m.items); });
 
