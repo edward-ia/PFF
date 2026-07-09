@@ -621,18 +621,53 @@ class PffConfiguration(models.Model):
         # Étiquettes d'assemblage + validation
         etiquettes, validation = [], []
         num = ''.join(ch for ch in (self.name or '') if ch.isdigit()) or '0'
+        # Client RÉEL — même source que le devis (fiche client), aucune valeur figée.
+        client_name = self.partner_id.name or ''
+        client_loc = ' '.join(x for x in [self.partner_id.city or '',
+                                          self.partner_id.state_id.code or ''] if x)
         for idx, line in enumerate(self.line_ids, start=1):
+            # Code de profilé du VOLET, repris de la liste de coupe capturée
+            # (ligne « VOLET : No article … » du vrai format Fusion).
+            volet_code = next(
+                (c.get('code') for c in _load(line.comps_json, [])
+                 if (c.get('grp') or '') == 'Volet' and c.get('code')), '')
+            try:
+                nsec = max(1, int(''.join(ch for ch in (line.param_sections or '')
+                                          if ch.isdigit()) or 1))
+            except ValueError:
+                nsec = 1
             bullets = []
-            for label, val in (('CADRE', line.param_cadre), ('VERRE', line.param_verre),
-                               ('FINITION INT.', line.param_soufflage),
-                               ('QUINCAILLERIE', line.param_quinc),
-                               ('MOUSTIQUAIRE', line.param_moust),
-                               ('COUPE-FROID', line.param_coupe)):
-                if val and val not in ('Aucun', 'Aucune', 'Non'):
-                    bullets.append('%s : %s' % (label, val))
+            if line.param_cadre:
+                bullets.append('CADRE : %s' % line.param_cadre)
+            if volet_code:
+                bullets.append('VOLET : No article : %s' % volet_code)
+            if line.family == 'guillotine':
+                bullets.append('BALANCE : RESSORT 5LBS COURT + RESSORT 6LBS MOYEN')
+            if line.param_verre:
+                bullets.append('VERRE : %s, Technoform Noir' % line.param_verre)
+            if line.param_soufflage and line.param_soufflage not in ('Aucun', 'Aucune', 'Non', ''):
+                bullets.append('FINITION INT. : %s' % line.param_soufflage)
+            if line.param_moust and line.param_moust not in ('Non', 'Aucune', ''):
+                bullets.append('MOUSTIQUAIRE : %s' % line.param_moust)
+            if line.param_coupe:
+                bullets.append('COUPE-FROID : %s' % line.param_coupe)
+            if line.param_quinc:
+                bullets.append('QUINCAILLERIE : %s' % line.param_quinc)
+            w_in = int(round((line.width or 0) / 25.4))
+            h_in = int(round((line.height or 0) / 25.4))
             etiquettes.append({
                 'item': idx,
                 'commande': self.name or '',
+                'client': client_name,
+                'client_loc': client_loc,
+                'name': '%s PVC / %s section(s) %s' % (
+                    fam_labels.get(line.family, line.family), nsec,
+                    self._BT_SECTION.get(line.family, '')),
+                'dim': '%s x %s mm.' % (self._fmt_mm(line.width), self._fmt_mm(line.height)),
+                # Dessin « vue extérieure » — MÊME source que le devis (_cmd_svg).
+                'svg': self._cmd_svg(line.family, nsec,
+                                     (line.param_ouvrant or 'D') != 'G',
+                                     w_in, h_in, idx),
                 'type': fam_labels.get(line.family, line.family),
                 'section': self._BT_SECTION.get(line.family, ''),
                 'width': int(line.width or 0),

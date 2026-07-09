@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Format de papier PARTAGÉ par tous les rapports PFF : Lettre US
+         (8,5 × 11 po / 215,9 × 279,4 mm) = norme québécoise, PAS A4.
+         Défini en tête pour être disponible avant toute référence. -->
+    <record id="paperformat_pff_po" model="report.paperformat">
+        <field name="name">PFF - Lettre US (8,5 x 11)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">6</field>
+        <field name="margin_bottom">6</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">6</field>
+        <field name="dpi">90</field>
+    </record>
+
     <!-- Action d'impression : Bons de travail (feuilles de production) -->
     <record id="action_report_pff_bt" model="ir.actions.report">
         <field name="name">Bons de travail</field>
@@ -8,6 +24,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">pff_configurateur.report_pff_bt</field>
         <field name="report_file">pff_configurateur.report_pff_bt</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
         <field name="binding_model_id" ref="model_pff_configuration"/>
         <field name="binding_type">report</field>
     </record>
@@ -176,6 +193,7 @@
         <field name="name">Ordre de production</field>
         <field name="report_name">pff_configurateur.report_pff_bt_mo</field>
         <field name="report_file">pff_configurateur.report_pff_bt_mo</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
     </record>
 
     <template id="report_pff_bt_mo">
@@ -272,6 +290,46 @@
         </div>
     </template>
 
+    <!-- Étiquettes d'assemblage (« à assembler à la fin ») — VRAIES données :
+         client tiré de la fiche client, n° d'ordre de fabrication réel (of_no),
+         dessin du produit (même SVG que le devis). Attend `d` (=_get_bt_data),
+         `of_no` (numéro de l'OF). Une étiquette par fenêtre de la commande. -->
+    <template id="report_pff_bt_etiquettes">
+        <div style="margin-top:8px;">
+            <div style="font-weight:bold;font-size:12px;padding:4px 8px;border:1px solid #111;">
+                ÉTIQUETTES D'ASSEMBLAGE — à coller sur chaque fenêtre (à assembler à la fin)
+            </div>
+            <t t-foreach="d['etiquettes']" t-as="e">
+                <table style="width:100%;border-collapse:collapse;border:1px solid #111;border-top:none;">
+                    <tr style="vertical-align:top;">
+                        <td style="padding:6px 8px;font-size:9px;">
+                            <table style="width:100%;border-collapse:collapse;">
+                                <tr>
+                                    <td style="font-size:8px;">#Commande <b style="font-size:11px;"><span t-esc="e['commande']"/> \\ <span t-esc="e['item']"/></b></td>
+                                    <td style="text-align:right;font-size:8px;">OF <b style="font-size:11px;" t-esc="of_no"/></td>
+                                </tr>
+                            </table>
+                            <div style="margin-top:2px;"><span style="font-size:8px;">LIVRÉ À</span> <b><span t-esc="e['client']"/></b> <span t-esc="e['client_loc']"/></div>
+                            <div><span style="font-size:8px;">VENDU À</span> <span t-esc="e['client']"/></div>
+                            <table style="width:100%;border-collapse:collapse;margin:3px 0;">
+                                <tr style="vertical-align:top;">
+                                    <td style="width:90px;"><div style="border:1px solid #333;padding:3px;text-align:center;"><t t-out="e['svg']"/></div></td>
+                                    <td style="padding-left:6px;font-weight:bold;font-size:10px;"><span t-esc="e['name']"/><br/><span style="font-weight:normal;">CADRE : <span t-esc="e['dim']"/></span></td>
+                                </tr>
+                            </table>
+                            <t t-foreach="e['bullets']" t-as="b"><div style="line-height:1.45;">- <span t-esc="b"/></div></t>
+                            <div style="margin-top:4px;font-family:monospace;letter-spacing:2px;font-size:12px;font-weight:bold;" t-esc="e['barcode']"/>
+                        </td>
+                        <td style="width:60px;text-align:center;border-left:1px solid #111;vertical-align:middle;">
+                            <div style="font-size:24px;font-weight:bold;" t-esc="e['item']"/>
+                            <div style="font-size:8px;" t-esc="e['commande']"/>
+                        </td>
+                    </tr>
+                </table>
+            </t>
+        </div>
+    </template>
+
     <!-- ============================================================= -->
     <!-- Ordre de travail PAR POSTE (mrp.workorder) : chaque poste ne voit    -->
     <!-- que SES composantes (feuilles filtrées via _bt_data_for_workcenter). -->
@@ -283,6 +341,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">pff_configurateur.report_pff_bt_wo</field>
         <field name="report_file">pff_configurateur.report_pff_bt_wo</field>
+        <field name="paperformat_id" ref="paperformat_pff_po"/>
         <field name="binding_model_id" ref="mrp.model_mrp_workorder"/>
         <field name="binding_type">report</field>
     </record>
@@ -318,6 +377,14 @@
                         <t t-else="">
                             <p style="font-size:11px;">Aucune pièce à produire à ce poste pour cette commande.</p>
                         </t>
+                        <!-- Poste Assemblage : joindre les étiquettes des fenêtres
+                             (vraies données + dessin du produit). L'OT Assemblage est
+                             déjà routé vers la station choisie au configurateur. -->
+                        <t t-if="wd['poste'] == 'Assemblage'">
+                            <t t-set="d" t-value="cfg._get_bt_data()"/>
+                            <t t-set="of_no" t-value="wo.production_id.name"/>
+                            <t t-call="pff_configurateur.report_pff_bt_etiquettes"/>
+                        </t>
                     </t>
                     <t t-else="">
                         <p style="font-size:12px;">Aucune configuration PFF liée (<span t-esc="wo.production_id.name"/>).</p>
@@ -333,18 +400,7 @@
     <!-- Données 100% dynamiques : n° = po.name, date = maintenant,        -->
     <!-- Envoyé par = utilisateur, fournisseur + adresse = fiche réelle.   -->
     <!-- ============================================================= -->
-    <record id="paperformat_pff_po" model="report.paperformat">
-        <field name="name">PFF Bon d'achat</field>
-        <field name="format">A4</field>
-        <field name="orientation">Portrait</field>
-        <field name="margin_top">6</field>
-        <field name="margin_bottom">6</field>
-        <field name="margin_left">7</field>
-        <field name="margin_right">7</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">6</field>
-        <field name="dpi">90</field>
-    </record>
+    <!-- (Format de papier déplacé en tête de fichier : paperformat_pff_po) -->
     <!-- Le bon d'achat Fusion REMPLACE le rapport d'achat standard Odoo.     -->
     <!-- On redirige les DEUX actions natives (bon de commande + demande de   -->
     <!-- prix) vers notre gabarit et on les renomme « Bon d'achat » : le       -->
