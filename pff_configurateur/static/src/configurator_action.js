@@ -16,7 +16,7 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=15";
+        this.src = "/pff_configurateur/static/configurateur.html?v=16";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »
@@ -89,6 +89,9 @@ export class PffConfigurator extends Component {
                         }),
                         // Liste de coupe capturée → base des feuilles de production
                         comps_json: JSON.stringify(d.comps || []),
+                        // Stations choisies par morceau (clé `poste|section` → n° station)
+                        // → routage des ordres de travail au « Lancer en fabrication »
+                        poste_assign_json: JSON.stringify(d.poste_assign || {}),
                     };
                     // Paramètres détaillés → colonnes optionnelles de la liste.
                     // Liste blanche : un param inconnu envoyé par le configurateur

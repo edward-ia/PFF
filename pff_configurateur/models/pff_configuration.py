@@ -1,8 +1,12 @@
 import json
+import logging
+import re
 
 from markupsafe import Markup
 
 from odoo import models, fields, api, _
+
+_logger = logging.getLogger(__name__)
 
 FAMILIES = [
     ('battant', 'Battant'),
@@ -117,12 +121,80 @@ class PffConfiguration(models.Model):
                 'bom_id': bom.id if bom else False,
                 'origin': self.name,
             })
+            # Routage par morceau AVANT confirmation : en brouillon, les ordres de
+            # travail (générés depuis la nomenclature) sont modifiables. On éclate
+            # chaque poste en un OT par morceau, routé vers la station choisie au
+            # configurateur. Après action_confirm (état ≠ brouillon), Odoo ne
+            # recalcule plus les OT → nos modifications sont conservées.
+            self._route_line_workorders(mo, line)
             mo.action_confirm()
-            # Filet de sécurité : si la confirmation n'a pas généré les ordres de
-            # travail alors que la nomenclature a des opérations, on les crée.
-            if bom and bom.operation_ids and not mo.workorder_ids \
-                    and hasattr(mo, '_create_workorder'):
-                mo._create_workorder()
+        return True
+
+    # Relie un poste du configurateur (clé de poste_assign_json : scie, poincon,
+    # soudage, sousens, assemblage, achat) au poste de travail réel (mrp.workcenter)
+    # via le PRÉFIXE de son nom — robuste aux variantes (« Poinçon/machinage »…).
+    _POSTE_CODE_HINT = {
+        'scie': 'scie', 'poincon': 'poin', 'soudage': 'soud',
+        'sousens': 'sous', 'assemblage': 'assemb', 'achat': 'achat',
+    }
+
+    @staticmethod
+    def _wc_base_name(name):
+        """« Scie 3 » → « Scie » : retire le n° de station en fin de nom."""
+        return re.sub(r'\s*\d+\s*$', '', name or '').strip()
+
+    def _poste_code_of_wc(self, name):
+        base = self._wc_base_name(name).lower()
+        for code, hint in self._POSTE_CODE_HINT.items():
+            if base.startswith(hint):
+                return code
+        return None
+
+    def _route_line_workorders(self, mo, line):
+        """Éclate les ordres de travail d'un OF (encore en brouillon) selon les
+        stations choisies au configurateur (`poste_assign_json` =
+        {"poste|section": "n° station"}). Pour chaque poste ayant des choix par
+        morceau, l'OT générique est remplacé par un OT par morceau routé vers
+        « <Poste> <n°> » (ex. « Scie 3 »). Best-effort et non bloquant : toute
+        anomalie laisse l'OF en l'état sans empêcher la mise en fabrication."""
+        try:
+            assign = json.loads(line.poste_assign_json or '{}')
+        except (ValueError, TypeError):
+            return
+        if not assign:
+            return
+        # Regroupe les choix par poste : {poste_code: {section: n° station}}
+        by_poste = {}
+        for key, station in assign.items():
+            if not station:
+                continue
+            parts = key.split('|', 1)
+            if len(parts) != 2:
+                continue
+            by_poste.setdefault(parts[0], {})[parts[1]] = str(station)
+        if not by_poste:
+            return
+        Workcenter = self.env['mrp.workcenter']
+        for wo in list(mo.workorder_ids):
+            try:
+                code = self._poste_code_of_wc(wo.workcenter_id.name)
+                secmap = by_poste.get(code)
+                if not secmap:
+                    continue  # aucun choix par morceau pour ce poste → OT inchangé
+                base = self._wc_base_name(wo.workcenter_id.name)
+                for section, station in secmap.items():
+                    wc = Workcenter.search(
+                        [('name', '=', '%s %s' % (base, station))], limit=1
+                    ) or wo.workcenter_id
+                    wo.copy({
+                        'name': '%s — %s' % (wo.name, section),
+                        'workcenter_id': wc.id,
+                    })
+                wo.unlink()  # retire l'OT générique, remplacé par les OT par morceau
+            except Exception:
+                _logger.warning(
+                    "PFF: routage par morceau échoué pour l'OT %s (OF %s)",
+                    wo.display_name, mo.name, exc_info=True)
         return True
 
     def _compute_production_count(self):
@@ -610,6 +682,7 @@ class PffConfigurationLine(models.Model):
     config_json = fields.Text(string='Paramètres (JSON)')   # tout l'état du configurateur
     thermos_json = fields.Text(string='Thermos (JSON)')     # verre capturé pour le bon d'achat
     comps_json = fields.Text(string='Liste de coupe (JSON)')  # pièces capturées pour les feuilles de production
+    poste_assign_json = fields.Text(string='Stations par morceau (JSON)')  # {"poste|section": "n° station"} → routage des OT
     qty = fields.Integer(string='Qté', default=1)
     price_unit = fields.Float(string='Prix unitaire')
     price_subtotal = fields.Float(string='Sous-total', compute='_compute_subtotal', store=True)

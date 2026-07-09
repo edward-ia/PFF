@@ -598,14 +598,14 @@ function band(postes,sel){ return `<span class="poste-band">`+postes.map(p=>`<sp
 function btTable(rows,grp){ let i=0; const tr=rows.map(c=>{ i++; const cas=(CASIER[grp]||'Case')+' '+String(i).padStart(2,'0');
     return `<tr><td>${c.item||1}</td><td>${c.code}</td><td>${c.desc}</td><td class="cas">${cas}</td><td class="num">${c.lng?Math.round(c.lng):'—'}</td><td class="num">${c.qte}</td></tr>`; }).join('');
   return `<table class="bt-tbl"><thead><tr><th>Item</th><th>Code</th><th>Désignation</th><th>Casier</th><th>Long. TIGER (mm)</th><th>Qté</th></tr></thead><tbody>${tr}</tbody></table>`; }
-function collect(items,grp,filterFn){ const out=[]; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.comps.filter(filterFn||(c=>c.grp===grp)).forEach(c=> out.push({...c,item:idx+1,qte:c.qte*it.qty})); }); return out; }
 let BT_POSTE='all';
 const POSTES_ALL=['scie','poincon','soudage','sousens','assemblage','achat'];
 const STATIONS=[1,2,3,4,5,6];
 let POSTE_ASSIGN={};   // assignations mémorisées, clé `${poste}|${section}` → n° de station (1–6)
 function renderBons(){
   const items=orderItems(), nItems=items.length, totQ=items.reduce((a,it)=>a+it.qty,0), sel=BT_POSTE;
-  const stationSel=(grp)=>{ if(sel==='all') return ''; const key=sel+'|'+grp, cur=POSTE_ASSIGN[key]||'';
+  // Sélecteur de station — désormais par PRODUIT × section (clé `poste|item|section`)
+  const stationSel=(itemIdx,grp)=>{ if(sel==='all') return ''; const key=sel+'|'+itemIdx+'|'+grp, cur=POSTE_ASSIGN[key]||'';
     return `<select class="stsel" data-key="${key}" title="Poste (1–6) qui exécute cette tâche">`+
       `<option value="">Poste n°…</option>`+STATIONS.map(n=>`<option value="${n}"${cur==n?' selected':''}>Poste ${n}</option>`).join('')+`</select>`; };
   const secDefs=[
@@ -617,24 +617,35 @@ function renderBons(){
     {grp:'Soufflage',n:'⑥',postes:['scie','assemblage']},
     {grp:'Moustiquaire',n:'⑦',postes:['scie','assemblage']},
   ];
+  const thPostes=['achat','assemblage'];
   const opts=`<option value="all"${sel==='all'?' selected':''}>Tous les postes</option>`+POSTES_ALL.map(p=>`<option value="${p}"${sel===p?' selected':''}>${POSTE_LBL[p]}</option>`).join('');
   let html=`<div class="bt-head"><div><b>BON DE TRAVAIL</b> <span class="pill">#015980 · maquette</span></div>
     <div class="bt-poste"><label>Poste :</label><select id="btPoste">${opts}</select></div>
     <div class="pill">Commande ${ORDER_NO} · ${nItems} item(s) · ${totQ} fenêtre(s)</div></div>`;
-  let shown=0;
-  secDefs.filter(d=>sel==='all'||d.postes.includes(sel)).forEach(d=>{ const rows=collect(items,d.grp); if(!rows.length) return; shown++;
-    html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">${d.n} ${d.grp.toUpperCase()}</span>${stationSel(d.grp)}</span>${band(d.postes,sel)}</div>${btTable(rows,d.grp)}</div>`; });
-  const thPostes=['achat','assemblage'];
-  if(sel==='all'||thPostes.includes(sel)){
-    let trows=''; items.forEach((it,idx)=>{ const dv=derive(it.s); dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>${it.s.vType==='triple'?'Triple':'Double 1'} Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; }); });
-    if(!trows) trows=`<tr><td colspan="6" class="pill">Aucun vitrage</td></tr>`;
-    html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">⑧ THERMOS (achat)</span>${stationSel('Thermos')}</span>${band(thPostes,sel)}</div>
-      <table class="bt-tbl"><thead><tr><th>Item</th><th>Produit</th><th>Dim. verre</th><th>N° lot</th><th>Épaisseur</th><th>Qté</th></tr></thead><tbody>${trows}</tbody></table>
-      <div class="note">Achat fournisseur (ex. Multiver) · lotisation 2×/sem. sur carnet de production · traçabilité par n° de lot.</div></div>`;
-    shown++;
-  }
-  if(!shown) html+=`<div class="note">Aucune pièce ne passe par ce poste pour cette commande.</div>`;
-  html+=`<div class="note">${sel==='all'?'Toutes les sections affichées (choisis un poste pour assigner les stations).':'Filtré pour le poste <b>'+POSTE_LBL[sel]+'</b> — choisis la <b>station (1–6)</b> qui exécute chaque tâche.'} Items agrégés (colonne <b>Item</b>) ; étiquettes dans l’onglet <b>Assemblage</b>. Codes &amp; casiers = placeholders à valider.</div>`;
+  let shownItems=0;
+  // ── Groupé PAR PRODUIT (même logique que Vue 2D / Fiche technique) ──
+  items.forEach((it,idx)=>{
+    const dv=derive(it.s);
+    let secHtml='';
+    // sections de CE produit qui passent par le poste sélectionné
+    secDefs.filter(d=>sel==='all'||d.postes.includes(sel)).forEach(d=>{
+      const rows=dv.comps.filter(c=>c.grp===d.grp).map(c=>({...c,item:idx+1,qte:c.qte*it.qty}));
+      if(!rows.length) return;
+      secHtml+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">${d.n} ${d.grp.toUpperCase()}</span>${stationSel(idx,d.grp)}</span>${band(d.postes,sel)}</div>${btTable(rows,d.grp)}</div>`;
+    });
+    // Thermos de CE produit (postes achat / assemblage)
+    if(sel==='all'||thPostes.includes(sel)){
+      let trows=''; dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>${it.s.vType==='triple'?'Triple':'Double 1'} Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; });
+      if(trows) secHtml+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">⑧ THERMOS (achat)</span>${stationSel(idx,'Thermos')}</span>${band(thPostes,sel)}</div>
+        <table class="bt-tbl"><thead><tr><th>Item</th><th>Produit</th><th>Dim. verre</th><th>N° lot</th><th>Épaisseur</th><th>Qté</th></tr></thead><tbody>${trows}</tbody></table>
+        <div class="note">Achat fournisseur (ex. Multiver) · lotisation 2×/sem. sur carnet de production · traçabilité par n° de lot.</div></div>`;
+    }
+    if(!secHtml) return;   // ce produit n'a rien pour ce poste choisi
+    shownItems++;
+    html+=itemHeader(it,idx)+secHtml;
+  });
+  if(!shownItems) html+=`<div class="note">Aucune pièce ne passe par ce poste pour cette commande.</div>`;
+  html+=`<div class="note">${sel==='all'?'Toutes les sections affichées, groupées par produit (choisis un poste pour assigner les stations).':'Filtré pour le poste <b>'+POSTE_LBL[sel]+'</b> — chaque produit affiché séparément ; choisis la <b>station (1–6)</b> qui exécute chaque morceau.'} Étiquettes dans l’onglet <b>Assemblage</b>. Codes &amp; casiers = placeholders à valider.</div>`;
   return html;
 }
 
@@ -848,7 +859,9 @@ ui('viewBtns').addEventListener('click',e=>{ if(e.target.dataset.v) setView(e.ta
 
 /* ===== VALIDER → renvoie la configuration à Odoo (postMessage) ===== */
 ui('valider').addEventListener('click',()=>{
-  const items=orderItems().map(it=>{ const s=it.s; const dv=derive(s);
+  const items=orderItems().map((it,idx)=>{ const s=it.s; const dv=derive(s);
+    // Stations choisies pour CE produit — POSTE_ASSIGN (clé `poste|item|section`) → objet `poste|section`
+    const poste_assign={}; Object.keys(POSTE_ASSIGN).forEach(k=>{ const kp=k.split('|'); if(kp.length===3 && +kp[1]===idx && POSTE_ASSIGN[k]) poste_assign[kp[0]+'|'+kp[2]]=POSTE_ASSIGN[k]; });
     const tint={clair:'Clair',bronze:'Bronze',gray:'Gris'}[s.vTint]||s.vTint||'';
     const glass=(s.vType==='triple'?'Triple':'Double 1')+' Low-E Argon '+tint+(s.aspect==='depoli'?' (dépoli)':'');
     const ep=(VERRE[s.vType]||{}).ep||'';
@@ -874,7 +887,7 @@ ui('valider').addEventListener('click',()=>{
     return {
     family:s.family, width:Math.round(s.W), height:Math.round(s.H),
     description:FAMILIES[s.family].fr+' '+Math.round(s.W)+' × '+Math.round(s.H)+' mm',
-    qty:it.qty||1, price:priceEstimate(s), config:s,
+    qty:it.qty||1, price:priceEstimate(s), config:s, poste_assign,
     // Thermos + liste de coupe capturés ici (calcul déjà fait par derive) → pas de recalcul Python
     thermos:dv.thermos.map(t=>({desc:t.desc,w:Math.round(t.w),h:Math.round(t.h),qte:t.qte})),
     comps:dv.comps.map(c=>({grp:c.grp,code:c.code,desc:c.desc,lng:c.lng,qte:c.qte})), glass, ep, params };
