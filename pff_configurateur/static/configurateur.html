@@ -661,14 +661,18 @@ function miniSvg(s){ const sc=Math.min(74/s.W,52/s.H),w=s.W*sc,hh=s.H*sc,mu='#55
   let g=`<svg width="${w+4}" height="${hh+4}"><rect x="2" y="2" width="${w}" height="${hh}" fill="#eef2f5" stroke="#333"/>`;
   if(s.family==='coulissant'||s.family==='porte_patio'){ for(let i=1;i<s.sections;i++) g+=`<line x1="${2+w/s.sections*i}" y1="2" x2="${2+w/s.sections*i}" y2="${2+hh}" stroke="${mu}"/>`; }
   if(s.family==='guillotine') g+=`<line x1="2" y1="${2+hh/2}" x2="${2+w}" y2="${2+hh/2}" stroke="${mu}"/>`;
+  if(s.family==='battant'){ const cx=2+w/2; g+=`<path d="M${2+w*0.1} ${2+hh*0.9} L${cx} ${2+hh*0.1} L${2+w*0.9} ${2+hh*0.9}" fill="none" stroke="${mu}"/>`; }
+  if(s.family==='porte_ext'||s.family==='porte_int') g+=`<rect x="${2+w*0.16}" y="${2+hh*0.12}" width="${w*0.68}" height="${hh*0.78}" fill="none" stroke="${mu}"/>`;
   return g+'</svg>';
 }
 function etqCard(it,idx){
   const s=it.s, fam=FAMILIES[s.family], dimC=`${frnum(s.W)} x ${frnum(s.H)} mm.`;
+  const voletCode=(derive(s).comps.find(c=>c.grp==='Volet')||{}).code||'';
   const moul=s.moulure==='none'?`Aucune (${dimC})`:`Brique ${s.moulure==='j'?'J-trim':s.moulure+'″'} (${dimC})`;
   const cmd=ORDER_NO.split('').map(d=>`<span>${d}</span>`).join('');
   const bullets=[
     `- CADRE : ${s.cadreNom}`,
+    voletCode?`- VOLET : No article : ${voletCode}`:null,
     s.family==='guillotine'?'- BALANCE: RESSORT 5LBS COURT + RESSORT 6LBS MOYEN':null,
     `- VERRE : ${s.vType==='triple'?'Triple':'Double 1'} Low-E Argon, Technoform Noir`,
     `- FINITION INT.: ${s.soufflage==='none'?'Aucune':'Ext PVC '+s.soufflage+'″ Fermée ('+PROFILS.soufflage+'), Épais (totale): 10″, Env. à part'}`,
