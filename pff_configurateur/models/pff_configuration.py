@@ -120,6 +120,7 @@ class PffConfiguration(models.Model):
                 'product_uom_id': product.uom_id.id,
                 'bom_id': bom.id if bom else False,
                 'origin': self.name,
+                'pff_line_id': line.id,
             })
             # Routage par morceau AVANT confirmation : en brouillon, les ordres de
             # travail (générés depuis la nomenclature) sont modifiables. On éclate
@@ -153,9 +154,12 @@ class PffConfiguration(models.Model):
     def _route_line_workorders(self, mo, line):
         """Éclate les ordres de travail d'un OF (encore en brouillon) selon les
         stations choisies au configurateur (`poste_assign_json` =
-        {"poste|section": "n° station"}). Pour chaque poste ayant des choix par
-        morceau, l'OT générique est remplacé par un OT par morceau routé vers
-        « <Poste> <n°> » (ex. « Scie 3 »). Best-effort et non bloquant : toute
+        {"poste|section": "n° station"}). Pour chaque poste ayant AU MOINS un
+        choix, l'OT générique est remplacé par UN OT PAR MORCEAU du produit qui
+        passe par ce poste : le morceau choisi va à sa station, les autres à la
+        station par défaut (celle de la nomenclature, sinon 1) — ainsi aucun
+        morceau n'est perdu. Chaque OT porte son morceau dans `pff_section` et
+        dans son nom (« coupe — Cadre »). Best-effort et non bloquant : toute
         anomalie laisse l'OF en l'état sans empêcher la mise en fabrication."""
         try:
             assign = json.loads(line.poste_assign_json or '{}')
@@ -174,21 +178,40 @@ class PffConfiguration(models.Model):
             by_poste.setdefault(parts[0], {})[parts[1]] = str(station)
         if not by_poste:
             return
+        # Morceaux (composantes) réellement présents dans ce produit, dans
+        # l'ordre d'affichage du bon de travail.
+        try:
+            comps = json.loads(line.comps_json or '[]')
+        except (ValueError, TypeError):
+            comps = []
+        grps_present = [g for g in self._BT_ORDER
+                        if any((c.get('grp') or '') == g for c in comps)]
         Workcenter = self.env['mrp.workcenter']
         for wo in list(mo.workorder_ids):
             try:
                 code = self._poste_code_of_wc(wo.workcenter_id.name)
                 secmap = by_poste.get(code)
                 if not secmap:
-                    continue  # aucun choix par morceau pour ce poste → OT inchangé
+                    continue  # aucun choix pour ce poste → OT générique inchangé
                 base = self._wc_base_name(wo.workcenter_id.name)
-                for section, station in secmap.items():
+                # Station par défaut = celle de la nomenclature (n° en fin de
+                # nom du poste), sinon « 1 ».
+                m = re.search(r'(\d+)\s*$', wo.workcenter_id.name or '')
+                default_station = m.group(1) if m else '1'
+                # Sections de CE produit qui passent par ce poste.
+                sections = [g for g in grps_present
+                            if base in self._BT_POSTES.get(g, [])]
+                if not sections:
+                    continue
+                for section in sections:
+                    station = secmap.get(section) or default_station
                     wc = Workcenter.search(
                         [('name', '=', '%s %s' % (base, station))], limit=1
                     ) or wo.workcenter_id
                     wo.copy({
                         'name': '%s — %s' % (wo.name, section),
                         'workcenter_id': wc.id,
+                        'pff_section': section,
                     })
                 wo.unlink()  # retire l'OT générique, remplacé par les OT par morceau
             except Exception:
@@ -570,10 +593,13 @@ class PffConfiguration(models.Model):
         s.append('</svg>')
         return Markup(''.join(s))
 
-    def _get_bt_data(self):
+    def _get_bt_data(self, only_line=None):
         """Prépare les données du bon de travail pour le rapport QWeb :
         feuilles de production par composante (agrégées depuis les listes de
-        coupe capturées), thermos, étiquettes d'assemblage, validation."""
+        coupe capturées), thermos, étiquettes d'assemblage, validation.
+        `only_line` : si fourni (une pff.configuration.line), ne garde que ce
+        produit — l'index d'item (COMM|ITEM) reste sa vraie position dans la
+        commande. Sert au bon de travail de station (1 OF = 1 produit)."""
         self.ensure_one()
         fam_labels = dict(FAMILIES)
 
@@ -588,6 +614,8 @@ class PffConfiguration(models.Model):
         for grp in self._BT_ORDER:
             rows = []
             for idx, line in enumerate(self.line_ids, start=1):
+                if only_line and line.id != only_line.id:
+                    continue
                 for c in _load(line.comps_json, []):
                     if (c.get('grp') or '') == grp:
                         rows.append({
@@ -608,6 +636,8 @@ class PffConfiguration(models.Model):
         # Thermos (achat)
         thermos = []
         for idx, line in enumerate(self.line_ids, start=1):
+            if only_line and line.id != only_line.id:
+                continue
             data = _load(line.thermos_json, {})
             for t in data.get('thermos', []):
                 thermos.append({
@@ -626,6 +656,8 @@ class PffConfiguration(models.Model):
         client_loc = ' '.join(x for x in [self.partner_id.city or '',
                                           self.partner_id.state_id.code or ''] if x)
         for idx, line in enumerate(self.line_ids, start=1):
+            if only_line and line.id != only_line.id:
+                continue
             # Code de profilé du VOLET, repris de la liste de coupe capturée
             # (ligne « VOLET : No article … » du vrai format Fusion).
             volet_code = next(
@@ -687,20 +719,26 @@ class PffConfiguration(models.Model):
         return {'feuilles': feuilles, 'thermos': thermos,
                 'etiquettes': etiquettes, 'validation': validation}
 
-    def _bt_data_for_workcenter(self, workcenter_name):
-        """Ordre de travail PAR POSTE : ne garde que les feuilles (composantes)
-        qui passent par ce poste. `workcenter_name` = ex. « Scie 1 », « Poinçon/
-        machinage 3 » → on déduit le poste de base (« Scie », « Poinçon machinage »)
-        et on filtre. Le thermos (Achat sur commande + Assemblage) est joint au
-        poste Assemblage."""
+    def _bt_data_for_workorder(self, wo):
+        """Ordre de travail PAR STATION (mrp.workorder) : ne garde que
+        (1) le produit de CET OF (via `mo.pff_line_id`) — pas toute la commande,
+        et (2) le morceau routé vers CETTE station (`wo.pff_section`, sinon
+        déduit du nom « … — Cadre »). Si l'OT est générique (aucun morceau), on
+        garde toutes les composantes du poste. Le thermos reste joint à
+        l'Assemblage. `base` = poste sans le n° de station (« Scie 1 » → « Scie »)."""
         self.ensure_one()
-        parts = (workcenter_name or '').rsplit(' ', 1)
-        base = parts[0] if len(parts) == 2 and parts[1].isdigit() else (workcenter_name or '')
-        base = base.replace('/', ' ')
-        data = self._get_bt_data()
+        base = self._wc_base_name(wo.workcenter_id.name).replace('/', ' ')
+        section = wo.pff_section or ''
+        if not section and ' — ' in (wo.name or ''):
+            section = wo.name.rsplit(' — ', 1)[1]
+        only_line = wo.production_id.pff_line_id or None
+        data = self._get_bt_data(only_line=only_line)
         feuilles = [f for f in data['feuilles'] if base in f['postes']]
+        if section:
+            feuilles = [f for f in feuilles if f['name'] == section.upper()]
         thermos = data['thermos'] if base in ('Assemblage', 'Achat sur commande') else []
-        return {'poste': base, 'feuilles': feuilles, 'thermos': thermos}
+        return {'poste': base, 'section': section,
+                'feuilles': feuilles, 'thermos': thermos}
 
 
 class PffConfigurationLine(models.Model):
@@ -762,3 +800,25 @@ class PffConfigurationLine(models.Model):
             'params': {'config_id': self.configuration_id.id, 'line_id': self.id},
             'context': {'config_id': self.configuration_id.id, 'line_id': self.id},
         }
+
+
+class MrpProduction(models.Model):
+    _inherit = 'mrp.production'
+
+    # Relie l'OF à la ligne configurée dont il est issu (1 OF par produit
+    # configuré). Permet au bon de travail de station de n'afficher QUE le
+    # produit de cet OF, pas toute la commande.
+    pff_line_id = fields.Many2one(
+        'pff.configuration.line', string="Ligne configurée PFF", index=True,
+        ondelete='set null',
+        help="Ligne du configurateur PFF à l'origine de cet ordre de fabrication.")
+
+
+class MrpWorkorder(models.Model):
+    _inherit = 'mrp.workorder'
+
+    # Morceau (Cadre, Volet, Parclose…) routé vers cette station par le
+    # configurateur. Permet au rapport de station de ne montrer que ce morceau.
+    pff_section = fields.Char(
+        string="Morceau PFF",
+        help="Composante routée vers cette station par le configurateur PFF.")

@@ -203,7 +203,9 @@
                 <div class="article" t-att-data-oe-model="mo._name" t-att-data-oe-id="mo.id">
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
                     <t t-if="cfg">
-                        <t t-set="d" t-value="cfg._get_bt_data()"/>
+                        <!-- 1 OF = 1 produit configuré → on ne montre que SON
+                             produit (via pff_line_id), pas toute la commande. -->
+                        <t t-set="d" t-value="cfg._get_bt_data(only_line=mo.pff_line_id or None)"/>
 
                         <!-- En-tête -->
                         <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
@@ -332,7 +334,7 @@
 
     <!-- ============================================================= -->
     <!-- Ordre de travail PAR POSTE (mrp.workorder) : chaque poste ne voit    -->
-    <!-- que SES composantes (feuilles filtrées via _bt_data_for_workcenter). -->
+    <!-- que SON produit + SON morceau (feuilles filtrées via _bt_data_for_workorder). -->
     <!-- Entrée séparée « Ordre de travail (Fusion) » dans le menu Imprimer.  -->
     <!-- ============================================================= -->
     <record id="action_report_pff_bt_wo" model="ir.actions.report">
@@ -353,7 +355,7 @@
                 <div class="article" t-att-data-oe-model="wo._name" t-att-data-oe-id="wo.id">
                 <div class="page" style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;">
                     <t t-if="cfg">
-                        <t t-set="wd" t-value="cfg._bt_data_for_workcenter(wo.workcenter_id.name)"/>
+                        <t t-set="wd" t-value="cfg._bt_data_for_workorder(wo)"/>
                         <!-- En-tête -->
                         <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
                             <tr style="vertical-align:top;">
@@ -381,7 +383,7 @@
                              (vraies données + dessin du produit). L'OT Assemblage est
                              déjà routé vers la station choisie au configurateur. -->
                         <t t-if="wd['poste'] == 'Assemblage'">
-                            <t t-set="d" t-value="cfg._get_bt_data()"/>
+                            <t t-set="d" t-value="cfg._get_bt_data(only_line=wo.production_id.pff_line_id or None)"/>
                             <t t-set="of_no" t-value="wo.production_id.name"/>
                             <t t-call="pff_configurateur.report_pff_bt_etiquettes"/>
                         </t>
