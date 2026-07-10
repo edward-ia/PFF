@@ -432,14 +432,17 @@ const steelMat=new THREE.MeshStandardMaterial({color:0x9aa0a6,roughness:.25,meta
 const whiteMat=new THREE.MeshStandardMaterial({color:0xf0f0f0,roughness:.5,metalness:.1});
 const screenMat=new THREE.MeshStandardMaterial({color:0x6b7077,roughness:.95,transparent:true,opacity:.5});   // moustiquaire
 let HM=steelMat, FMext, FMint, GM;
-function box(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
-function frameRect(cx,cy,w,h,m){
+// Matériaux bicolores par composant {ext,int} — remplis par build3D (couleurs ext/int distinctes)
+let MC, MO, MP, MMo;   // MC=cadre(dormant), MO=ouvrant/vantail, MP=parclose, MMo=moulure
+function box(w,h,d,m,x,y,z){ const mat=(m&&m.ext)?[m.ext,m.ext,m.ext,m.ext,m.ext,m.int]:m;   // paire {ext,int} → face +z (extérieur)=ext, face -z (intérieur)=int
+  const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),mat); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
+function frameRect(cx,cy,w,h,m,beadM){ beadM=beadM||m;   // m = cadre/ouvrant ; beadM = parclose (baguette) — couleur distincte possible
   box(w,FW,DEPTH,m,cx,cy+h/2-FW/2,0); box(w,FW,DEPTH,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,DEPTH,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,DEPTH,m,cx+w/2-FW/2,cy,0);
-  // baguette de vitrage (relief autour de la vitre, côté intérieur) — aspect profilé PVC ; le cadre « Flush » (affleurant) est plat, sans ce relief
+  // baguette de vitrage (parclose) — relief autour de la vitre ; le cadre « Flush » (affleurant) est plat, sans ce relief
   if(!FLUSH){ const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
-    box(iw,bw,0.022,m,cx,cy+ih/2,zb); box(iw,bw,0.022,m,cx,cy-ih/2,zb); box(bw,ih,0.022,m,cx-iw/2,cy,zb); box(bw,ih,0.022,m,cx+iw/2,cy,zb);
-    const be=FW*0.42, ze=DEPTH/2-0.006, ew=w-2*FW+be, eh=h-2*FW+be;   // bordure EXTÉRIEURE = relief visible de dehors (le cadre Flush en est dépourvu → face plate)
-    box(ew,be,0.012,m,cx,cy+eh/2,ze); box(ew,be,0.012,m,cx,cy-eh/2,ze); box(be,eh,0.012,m,cx-ew/2,cy,ze); box(be,eh,0.012,m,cx+ew/2,cy,ze); }
+    box(iw,bw,0.022,beadM,cx,cy+ih/2,zb); box(iw,bw,0.022,beadM,cx,cy-ih/2,zb); box(bw,ih,0.022,beadM,cx-iw/2,cy,zb); box(bw,ih,0.022,beadM,cx+iw/2,cy,zb);
+    const be=FW*0.42, ze=DEPTH/2-0.006, ew=w-2*FW+be, eh=h-2*FW+be;   // bordure EXTÉRIEURE (parclose côté ext) — le cadre Flush en est dépourvu → face plate
+    box(ew,be,0.012,beadM,cx,cy+eh/2,ze); box(ew,be,0.012,beadM,cx,cy-eh/2,ze); box(be,eh,0.012,beadM,cx-ew/2,cy,ze); box(be,eh,0.012,beadM,cx+ew/2,cy,ze); }
 }
 function lever(x,y,z,m,side){ m=m||HM; side=side||-1; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+side*0.012); }   // poignée bec-de-cane — side=-1 saillie INTÉRIEUR (défaut), +1 EXTÉRIEUR
 function crank(x,y,z,m){ m=m||HM;   // manivelle repliable (opérateur de battant/auvent) — saillie côté INTÉRIEUR (-z) ; renvoie le groupe bras (tourne à l'ouverture)
@@ -455,7 +458,8 @@ function grilleBars(w,h,x,y,z){ if(GRILLE==='none') return; const bw=0.016, zz=z
   else if(GRILLE==='croix'){ v(0); hb(0); }                            // croix centrale
 }
 function glassPane(w,h,x,y,z){ box(w,h,GT,GM,x,y,z); grilleBars(w,h,x,y,z); }
-function opening(cx,cy,w,h){ frameRect(cx,cy,w,h,FMext); glassPane(w-2*FW,h-2*FW,cx,cy,0); }
+function opening(cx,cy,w,h){ frameRect(cx,cy,w,h,MC,MP); glassPane(w-2*FW,h-2*FW,cx,cy,0); }   // fixe : cadre + parclose
+function openingZ(cx,cy,w,h,z){ const g=new THREE.Group(); g.position.set(0,0,z||0); const prev=CUR; CUR=g; opening(cx,cy,w,h); CUR=prev; root.add(g); }   // fenêtre fixe décalée en profondeur (rail int/ext)
 function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); while(root.children.length) root.remove(root.children[0]); SASHES=[]; CUR=root; }
 /* Crée un ouvrant animable : build() construit la géométrie dans un sous-groupe positionné en (cx,cy,cz) ;
    anim = {open:{x,y,rot}} donne l'état ouvert (interpolé depuis base = position fermée). */
@@ -464,22 +468,22 @@ function addSash(cx,cy,cz,build,anim){
   SASHES.push(Object.assign({g,base:{x:cx,y:cy,rot:0},target:0,p:0},anim));
 }
 
-function doorFrame(cx,cy,w,h,st){ const m=FMext,d=DEPTH*0.82;   // montants + traverses
+function doorFrame(cx,cy,w,h,st){ const m=MO,d=DEPTH*0.82;   // montants + traverses (ouvrant)
   box(w,st,d,m,cx,cy+h/2-st/2,0); box(w,st,d,m,cx,cy-h/2+st/2,0); box(st,h-2*st,d,m,cx-w/2+st/2,cy,0); box(st,h-2*st,d,m,cx+w/2-st/2,cy,0); }
-function slabAround(cx,cy,w,h,gx,gy,gw,gh){ const m=FMext,d=DEPTH*0.7;   // remplit le plein AUTOUR du trou vitré (4 bandes) → pas de vide
+function slabAround(cx,cy,w,h,gx,gy,gw,gh){ const m=MO,d=DEPTH*0.7;   // remplit le plein AUTOUR du trou vitré (panneau ouvrant) → pas de vide
   const top=cy+h/2,bot=cy-h/2,lft=cx-w/2,rgt=cx+w/2, gt=gy+gh/2,gb=gy-gh/2,gl=gx-gw/2,gr=gx+gw/2;
   if(top-gt>0.002) box(w,top-gt,d,m,cx,(top+gt)/2,0);
   if(gb-bot>0.002) box(w,gb-bot,d,m,cx,(gb+bot)/2,0);
   if(gl-lft>0.002) box(gl-lft,gt-gb,d,m,(lft+gl)/2,gy,0);
   if(rgt-gr>0.002) box(rgt-gr,gt-gb,d,m,(gr+rgt)/2,gy,0); }
-function panelGlass(cx,cy,w,h){ const m=FMext,bw=Math.min(0.045,w*0.3,h*0.3),d=0.03;   // baguettes + verre dans le trou (bw borné pour éviter le chevauchement sur petit vitrage)
+function panelGlass(cx,cy,w,h){ const m=MP,bw=Math.min(0.045,w*0.3,h*0.3),d=0.03;   // baguettes (parclose) + verre dans le trou (bw borné pour éviter le chevauchement sur petit vitrage)
   box(w,bw,d,m,cx,cy+h/2-bw/2,0); box(w,bw,d,m,cx,cy-h/2+bw/2,0); box(bw,h-2*bw,d,m,cx-w/2+bw/2,cy,0); box(bw,h-2*bw,d,m,cx+w/2-bw/2,cy,0);
   glassPane(w-2*bw,h-2*bw,cx,cy,0); }
-function moldingRect(cx,cy,w,h){ const m=FMext,bw=Math.min(0.05,w*0.3,h*0.3),zf=DEPTH*0.36;   // moulure en relief (panneau plein) — bw borné : pas de barres qui se croisent sur panneau court
+function moldingRect(cx,cy,w,h){ const m=MMo,bw=Math.min(0.05,w*0.3,h*0.3),zf=DEPTH*0.36;   // moulure en relief (panneau plein) — bw borné : pas de barres qui se croisent sur panneau court
   box(w,bw,0.016,m,cx,cy+h/2-bw/2,zf); box(w,bw,0.016,m,cx,cy-h/2+bw/2,zf); box(bw,h-2*bw,0.016,m,cx-w/2+bw/2,cy,zf); box(bw,h-2*bw,0.016,m,cx+w/2-bw/2,cy,zf); }
 function leaf(cx,cy,w,h,pan){
   const st=Math.min(0.11,w*0.18); doorFrame(cx,cy,w,h,st); const iw=w-2*st, ih=h-2*st, top=cy+ih/2, bot=cy-ih/2;
-  if(pan==='plein'){ box(iw,ih,DEPTH*0.7,FMext,cx,cy,0); moldingRect(cx,cy+ih*0.24,iw*0.78,ih*0.4); moldingRect(cx,cy-ih*0.24,iw*0.78,ih*0.4); return; }
+  if(pan==='plein'){ box(iw,ih,DEPTH*0.7,MO,cx,cy,0); moldingRect(cx,cy+ih*0.24,iw*0.78,ih*0.4); moldingRect(cx,cy-ih*0.24,iw*0.78,ih*0.4); return; }
   const gw=Math.min(iw*0.96, iw*GLW), gh=Math.min(ih*0.96, ih*GLH);   // vitrage dimensionnable
   const gy=(pan==='vitre')?cy:(top - gh/2 - ih*0.05);                 // vitre centrée, sinon vers le haut
   slabAround(cx,cy,iw,ih,cx,gy,gw,gh);   // plein tout autour
@@ -487,50 +491,58 @@ function leaf(cx,cy,w,h,pan){
   if(pan!=='vitre'){ const sb=gy-gh/2, ph=sb-bot; if(ph>0.18) moldingRect(cx,(bot+sb)/2,iw*0.78,ph*0.7); }   // panneau plein bas mouluré (seuil relevé : pas de moulure sur un panneau trop court)
 }
 function brickMould(s){ if(s.moulure==='none')return; const W=s.W*MM,H=s.H*MM,cy=H/2,bw=s.moulure==='j'?0.02:(+s.moulure)*0.0254,z=DEPTH/2+0.004,t=0.018;
-  box(W+2*bw,bw,t,FMext,0,cy+H/2+bw/2,z); box(W+2*bw,bw,t,FMext,0,cy-H/2-bw/2,z); box(bw,H,t,FMext,-W/2-bw/2,cy,z); box(bw,H,t,FMext,W/2+bw/2,cy,z); }
+  box(W+2*bw,bw,t,MMo,0,cy+H/2+bw/2,z); box(W+2*bw,bw,t,MMo,0,cy-H/2-bw/2,z); box(bw,H,t,MMo,-W/2-bw/2,cy,z); box(bw,H,t,MMo,W/2+bw/2,cy,z); }
 function soufflageInt(s){ if(s.soufflage==='none')return; const W=s.W*MM,H=s.H*MM,cy=H/2,d=SOUF_D[s.soufflage]||0.12,zc=-DEPTH/2-d/2;
   box(W,FW,d,FMint,0,cy+H/2-FW/2,zc); box(W,FW,d,FMint,0,cy-H/2+FW/2,zc); box(FW,H-2*FW,d,FMint,-W/2+FW/2,cy,zc); box(FW,H-2*FW,d,FMint,W/2-FW/2,cy,zc); }
 
 function build3D(s){
   clearRoot(); FMext=frameMat(s.colExt); FMint=frameMat(s.colInt); GM=glassMat(s); HM=s.quinc.startsWith('Stainless')?steelMat:whiteMat;
+  // Bicolore GLOBAL : TOUT l'extérieur prend la couleur ext. (colExt), TOUT
+  // l'intérieur prend la couleur int. (colInt). Un seul choix pour toute la fenêtre.
+  MC = MO = MP = MMo = {ext:FMext, int:FMint};
   DEPTH=cadreDepth(s.cadreNom); FLUSH=/flush/i.test(s.cadreNom||''); CFM=new THREE.MeshStandardMaterial({color:s.coupe==='Noir'?0x1c1c1c:0x8b9196,roughness:.9});   // cadre → profondeur réelle + style flush ; coupe-froid → matériau coloré
   const fam=FAMILIES[s.family], W=s.W*MM, H=s.H*MM, cy=H/2, openRight=(s.ouvrant!=='G'); GRILLE=s.grilles||'none'; GLW=s.glassW||0.62; GLH=s.glassH||0.46;
   if(fam.door){
     const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux';
     const total=W+(hasL?sl:0)+(hasR?sl:0); let x=-total/2;
-    frameRect(0,cy,total+2*FW,H+FW,FMext);   // chambranle / cadre de porte
+    frameRect(0,cy,total+2*FW,H+FW,MC,MP);   // chambranle / cadre de porte
     if(hasL){ opening(x+sl/2,cy,sl,H); x+=sl; }
     if(s.family==='porte_patio'){ const n=s.sections,sw=W/n;
-      for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1);
-        if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
-        else opening(lx,cy,sw+FW,H); }
+      const opers=Array.from({length:n},(_,i)=> !s.openSecs||s.openSecs[i]), nOpen=opers.filter(Boolean).length, RO=DEPTH*0.26;
+      const railZ=i=> (n===2&&nOpen===2)?(i===0?-RO:RO):(opers[i]?-RO:RO);   // ouvrant → rail INTÉRIEUR ; 2 ouvrants → 1 int / 1 ext
+      for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=opers[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1), pz=railZ(i);
+        if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
+          if(s.moust) addSash(lx,cy,DEPTH/2+0.02,()=>{ box(sw-2*FW,H-2*FW,0.004,screenMat,0,0,0); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }   // moustiquaire par ouvrant, coulissante (même sens que la porte)
+        else openingZ(lx,cy,sw+FW,H,pz); }
     } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
       addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px, hx=lcx+(hingeR?-W/2+0.06:W/2-0.06); leaf(lcx,0,W,H,s.panneau); lever(hx,0,-DEPTH/2,HM,-1); lever(hx,0,DEPTH/2,HM,1); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) ; poignée des deux côtés (int + ext)
     x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
   } else if(s.family==='guillotine'){
     opening(0,cy+H/4,W,H/2+FW);
-    addSash(0,cy-H/4,0.02,()=>{ frameRect(0,0,W,H/2+FW,FMext); glassPane(W-2*FW,H/2-FW,0,0,0); box(0.18,0.025,0.05,HM,0,-(H/4)+0.08,-DEPTH/2); },{kind:'slide',open:{x:0,y:cy-H/4+H*0.32,rot:0}});
+    addSash(0,cy-H/4,0.02,()=>{ frameRect(0,0,W,H/2+FW,MO,MP); glassPane(W-2*FW,H/2-FW,0,0,0); box(0.18,0.025,0.05,HM,0,-(H/4)+0.08,-DEPTH/2); },{kind:'slide',open:{x:0,y:cy-H/4+H*0.32,rot:0}});
     if(s.moust) box(W-2*FW,H/2-FW,0.004,screenMat,0,cy-H/4,DEPTH/2+0.015);   // moustiquaire visible (moitié basse)
   } else if(s.family==='coulissant'){ const n=s.sections,sw=W/n;
-    for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=!s.openSecs||s.openSecs[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1);
-      if(oper){ addSash(lx,cy,0.02,()=>{ frameRect(0,0,sw+FW,H,FMext); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }
-      else opening(lx,cy,sw+FW,H); }
+    const opers=Array.from({length:n},(_,i)=> !s.openSecs||s.openSecs[i]), nOpen=opers.filter(Boolean).length, RO=DEPTH*0.26;
+    const railZ=i=> (n===2&&nOpen===2)?(i===0?-RO:RO):(opers[i]?-RO:RO);   // ouvrant → rail INTÉRIEUR (-z) ; fixe → EXTÉRIEUR (+z) ; 2 ouvrants → 1 int / 1 ext
+    for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=opers[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1), pz=railZ(i);
+      if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
+        if(s.moust) addSash(lx,cy,DEPTH/2+0.02,()=>{ box(sw-2*FW,H-2*FW,0.004,screenMat,0,0,0); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }   // moustiquaire SÉPARÉE par ouvrant + COULISSANTE (même sens que la porte)
+      else openingZ(lx,cy,sw+FW,H,pz); }
   } else if(s.family==='battant'){
-    frameRect(0,cy,W,H,FMext);   // dormant fixe
+    frameRect(0,cy,W,H,MC,MP);   // dormant fixe
     const inswing=s.sensOuv==='int', iw=W-2*FW, ih=H-2*FW;
     const ov=inswing?FW*0.6:0, sz=inswing?(-DEPTH-0.004):0.01, rotK=inswing?-1.3:1.3;   // ouverture INT : vantail derrière le dormant + battue (ov) qui recouvre la face intérieure → dégage le cadre en pivotant
     const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2);
-      addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,FMext); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
+      addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,MO,MP); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
         if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?rotK:-rotK},crankOpen:true});   // casement : ouverture progressive (par crans)
       if(!inswing){ const cg=crank(scx,FW+0.08,-DEPTH/2-0.06); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle bas-centre, saillante côté intérieur (hors soufflage) ; le bras tourne avec l'ouverture
-    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,FMext,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
+    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
   if(CFM && usesCoupeFroid(s.family)){ const bw=0.011, zc=DEPTH/2-0.03, iw=W-2*FW-0.006, ih=H-2*FW-0.006;   // coupe-froid : liseré périphérique visible (pas sur coulissant/guillotine/fixe)
     box(iw,bw,0.008,CFM,0,cy+ih/2,zc); box(iw,bw,0.008,CFM,0,cy-ih/2,zc); box(bw,ih,0.008,CFM,-iw/2,cy,zc); box(bw,ih,0.008,CFM,iw/2,cy,zc); }
-  if(s.moust && (s.family==='battant'||s.family==='coulissant'||s.family==='porte_patio')){   // moustiquaire visible (guillotine gérée dans sa branche) — battant = côté intérieur, coulissant/patio = extérieur
-    const zs=s.family==='battant'?(-DEPTH/2-0.02):(DEPTH/2+0.02);
-    box(W-2*FW,H-2*FW,0.004,screenMat,0,cy,zs); }
+  if(s.moust && s.family==='battant'){   // moustiquaire battant = côté intérieur, figée (coulissant/patio = par ouvrant + coulissante, gérés dans leur branche ; guillotine dans la sienne)
+    box(W-2*FW,H-2*FW,0.004,screenMat,0,cy,-DEPTH/2-0.02); }
   if(s.imposte&&s.imposte!=='none'){ const ih=s.imposteH*MM; let ibase=W, icx=0, ftop=H;   // imposte fixe au-dessus (100% = pleine largeur)
     if(fam.door){ const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux', tot=W+(hasL?sl:0)+(hasR?sl:0), doorCx=-tot/2+(hasL?sl:0)+W/2;
       ftop=H+FW/2;   // le chambranle de porte dépasse de FW/2
@@ -538,7 +550,7 @@ function build3D(s){
       else { ibase=tot+2*FW; }   // porte + verres latéraux → largeur hors-tout de l'ensemble (flush chambranle)
     }
     const iw=ibase*s.imposteW;
-    box(iw,FW,DEPTH,FMext,icx,ftop+FW/2,0); opening(icx,ftop+FW+ih/2,iw,ih); }
+    box(iw,FW,DEPTH,MC,icx,ftop+FW/2,0); opening(icx,ftop+FW+ih/2,iw,ih); }
   brickMould(s); soufflageInt(s);
   const topY=(s.imposte&&s.imposte!=='none')?(H+FW+s.imposteH*MM):H; controls.target.set(0,topY/2,0);
 }
