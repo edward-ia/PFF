@@ -16,7 +16,7 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=20";
+        this.src = "/pff_configurateur/static/configurateur.html?v=21";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »

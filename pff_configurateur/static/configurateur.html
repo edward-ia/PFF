@@ -131,6 +131,8 @@
       <div class="gh">Cadre & verre</div>
       <label>Cadre <span class="help" title="Profilé du dormant fixé au mur. 'Flush' = affleurant. Détermine les déductions de coupe.">?</span></label>
       <select id="cadre"><option value="9920I-20582|Cadre 5 5/8">Cadre 5 5/8</option><option value="9800-21383|Cadre 5 5/8 Flush">Cadre 5 5/8 Flush</option></select>
+      <label>Montage du cadre <span class="help" title="À ras : les portes remplissent le cadre (affleurantes). Débordant : le cadre est plus profond que les portes → les portes sont au centre. Visible en 3D sur coulissant/patio.">?</span></label>
+      <select id="cadreProf"><option value="ras">À ras (portes affleurantes)</option><option value="debord">Débordant (portes au centre)</option></select>
       <label>Verre / Thermos <span class="help" title="Unité scellée (thermos). Double/Triple Low-E + gaz argon = performance énergétique. La teinte change l'aspect.">?</span></label>
       <select id="verre"><option value="double|clair">Double 1 Low-E Argon — clair</option><option value="double|bronze">Double 1 Low-E Argon — bronze</option><option value="double|gray">Double 1 Low-E Argon — gris</option><option value="triple|clair">Triple Low-E Argon — clair</option></select>
       <label>Aspect du verre <span class="help" title="Transparent (standard) ou dépoli/givré pour l'intimité (salle de bain, porte).">?</span></label>
@@ -263,7 +265,7 @@ function state(){
   const [cadreCode,cadreNom]=ui('cadre').value.split('|');
   const [vType,vTint]=ui('verre').value.split('|'); const fam=ui('family').value;
   return { family:fam, W:+ui('w').value, H:+ui('h').value, unit:ui('unit').value,
-    cadreCode, cadreNom, vType, vTint, aspect:ui('aspect')?.value||'clair', colExt:ui('colExt').value, colInt:ui('colInt').value,
+    cadreCode, cadreNom, cadreProf:ui('cadreProf')?.value||'ras', vType, vTint, aspect:ui('aspect')?.value||'clair', colExt:ui('colExt').value, colInt:ui('colInt').value,
     moulure:ui('moulure').value, soufflage:ui('soufflage').value, grilles:ui('grilles')?.value||'none', imposte:ui('imposte')?.value||'none', imposteH:+(ui('imposteH')?.value||350), imposteW:+(ui('imposteW')?.value||1),
     quinc:ui('quinc').value, coupe:ui('coupe').value, moust:ui('moust').checked, vantaux:+(ui('vantaux')?.value||1),
     glassW:+(ui('glassW')?.value||0.62), glassH:+(ui('glassH')?.value||0.46),
@@ -434,14 +436,16 @@ const screenMat=new THREE.MeshStandardMaterial({color:0x6b7077,roughness:.95,tra
 let HM=steelMat, FMext, FMint, GM;
 // Matériaux bicolores par composant {ext,int} — remplis par build3D (couleurs ext/int distinctes)
 let MC, MO, MP, MMo;   // MC=cadre(dormant), MO=ouvrant/vantail, MP=parclose, MMo=moulure
-function box(w,h,d,m,x,y,z){ const mat=(m&&m.ext)?[m.ext,m.ext,m.ext,m.ext,m.ext,m.int]:m;   // paire {ext,int} → face +z (extérieur)=ext, face -z (intérieur)=int
-  const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),mat); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
-function frameRect(cx,cy,w,h,m,beadM){ beadM=beadM||m;   // m = cadre/ouvrant ; beadM = parclose (baguette) — couleur distincte possible
-  box(w,FW,DEPTH,m,cx,cy+h/2-FW/2,0); box(w,FW,DEPTH,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,DEPTH,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,DEPTH,m,cx+w/2-FW/2,cy,0);
+function box1(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
+function box(w,h,d,m,x,y,z){   // paire {ext,int} → coupe en 2 demi-épaisseurs : moitié avant (+z)=ext, moitié arrière (-z)=int (couleur correcte y compris sur les tranches)
+  if(m&&m.ext){ box1(w,h,d/2,m.ext,x,y,z+d/4); box1(w,h,d/2,m.int,x,y,z-d/4); }
+  else box1(w,h,d,m,x,y,z); }
+function frameRect(cx,cy,w,h,m,beadM,depth){ beadM=beadM||m; const D=depth||DEPTH;   // m = cadre/ouvrant ; beadM = parclose ; depth = profondeur (défaut = cadre)
+  box(w,FW,D,m,cx,cy+h/2-FW/2,0); box(w,FW,D,m,cx,cy-h/2+FW/2,0); box(FW,h-2*FW,D,m,cx-w/2+FW/2,cy,0); box(FW,h-2*FW,D,m,cx+w/2-FW/2,cy,0);
   // baguette de vitrage (parclose) — relief autour de la vitre ; le cadre « Flush » (affleurant) est plat, sans ce relief
-  if(!FLUSH){ const bw=FW*0.5, zb=-DEPTH*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
+  if(!FLUSH){ const bw=FW*0.5, zb=-D*0.18, iw=w-2*FW+bw, ih=h-2*FW+bw;
     box(iw,bw,0.022,beadM,cx,cy+ih/2,zb); box(iw,bw,0.022,beadM,cx,cy-ih/2,zb); box(bw,ih,0.022,beadM,cx-iw/2,cy,zb); box(bw,ih,0.022,beadM,cx+iw/2,cy,zb);
-    const be=FW*0.42, ze=DEPTH/2-0.006, ew=w-2*FW+be, eh=h-2*FW+be;   // bordure EXTÉRIEURE (parclose côté ext) — le cadre Flush en est dépourvu → face plate
+    const be=FW*0.42, ze=D/2-0.006, ew=w-2*FW+be, eh=h-2*FW+be;   // bordure EXTÉRIEURE (parclose côté ext) — le cadre Flush en est dépourvu → face plate
     box(ew,be,0.012,beadM,cx,cy+eh/2,ze); box(ew,be,0.012,beadM,cx,cy-eh/2,ze); box(be,eh,0.012,beadM,cx-ew/2,cy,ze); box(be,eh,0.012,beadM,cx+ew/2,cy,ze); }
 }
 function lever(x,y,z,m,side){ m=m||HM; side=side||-1; box(0.052,0.07,0.014,m,x,y,z); box(0.015,0.1,0.022,m,x,y-0.055,z+side*0.012); }   // poignée bec-de-cane — side=-1 saillie INTÉRIEUR (défaut), +1 EXTÉRIEUR
@@ -458,8 +462,8 @@ function grilleBars(w,h,x,y,z){ if(GRILLE==='none') return; const bw=0.016, zz=z
   else if(GRILLE==='croix'){ v(0); hb(0); }                            // croix centrale
 }
 function glassPane(w,h,x,y,z){ box(w,h,GT,GM,x,y,z); grilleBars(w,h,x,y,z); }
-function opening(cx,cy,w,h){ frameRect(cx,cy,w,h,MC,MP); glassPane(w-2*FW,h-2*FW,cx,cy,0); }   // fixe : cadre + parclose
-function openingZ(cx,cy,w,h,z){ const g=new THREE.Group(); g.position.set(0,0,z||0); const prev=CUR; CUR=g; opening(cx,cy,w,h); CUR=prev; root.add(g); }   // fenêtre fixe décalée en profondeur (rail int/ext)
+function opening(cx,cy,w,h,depth){ frameRect(cx,cy,w,h,MC,MP,depth); glassPane(w-2*FW,h-2*FW,cx,cy,0); }   // fixe : cadre + parclose
+function openingZ(cx,cy,w,h,z,depth){ const g=new THREE.Group(); g.position.set(0,0,z||0); const prev=CUR; CUR=g; opening(cx,cy,w,h,depth); CUR=prev; root.add(g); }   // fenêtre fixe décalée en profondeur (rail int/ext)
 function clearRoot(){ root.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); while(root.children.length) root.remove(root.children[0]); SASHES=[]; CUR=root; }
 /* Crée un ouvrant animable : build() construit la géométrie dans un sous-groupe positionné en (cx,cy,cz) ;
    anim = {open:{x,y,rot}} donne l'état ouvert (interpolé depuis base = position fermée). */
@@ -509,11 +513,12 @@ function build3D(s){
     if(hasL){ opening(x+sl/2,cy,sl,H); x+=sl; }
     if(s.family==='porte_patio'){ const n=s.sections,sw=W/n;
       const opers=Array.from({length:n},(_,i)=> !s.openSecs||s.openSecs[i]), nOpen=opers.filter(Boolean).length, RO=DEPTH*0.26;
+      const recess=(s.cadreProf==='debord')?DEPTH*0.20:0, PD=Math.max(0.02, DEPTH-2*RO-recess);   // à ras : portes remplissent le cadre ; débordant : portes plus minces au centre du cadre
       const railZ=i=> (n===2&&nOpen===2)?(i===0?-RO:RO):(opers[i]?-RO:RO);   // ouvrant → rail INTÉRIEUR ; 2 ouvrants → 1 int / 1 ext
       for(let i=0;i<n;i++){ const lx=x+sw*(i+.5), oper=opers[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1), pz=railZ(i);
-        if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
+        if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP,PD); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-PD/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
           if(s.moust) addSash(lx,cy,DEPTH/2+0.02,()=>{ box(sw-2*FW,H-2*FW,0.004,screenMat,0,0,0); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }   // moustiquaire par ouvrant, coulissante (même sens que la porte)
-        else openingZ(lx,cy,sw+FW,H,pz); }
+        else openingZ(lx,cy,sw+FW,H,pz,PD); }
     } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
       addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px, hx=lcx+(hingeR?-W/2+0.06:W/2-0.06); leaf(lcx,0,W,H,s.panneau); lever(hx,0,-DEPTH/2,HM,-1); lever(hx,0,DEPTH/2,HM,1); },{kind:'swing',open:{x:px,y:cy,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) ; poignée des deux côtés (int + ext)
     x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
@@ -523,11 +528,12 @@ function build3D(s){
     if(s.moust) box(W-2*FW,H/2-FW,0.004,screenMat,0,cy-H/4,DEPTH/2+0.015);   // moustiquaire visible (moitié basse)
   } else if(s.family==='coulissant'){ const n=s.sections,sw=W/n;
     const opers=Array.from({length:n},(_,i)=> !s.openSecs||s.openSecs[i]), nOpen=opers.filter(Boolean).length, RO=DEPTH*0.26;
+    const recess=(s.cadreProf==='debord')?DEPTH*0.20:0, PD=Math.max(0.02, DEPTH-2*RO-recess);   // à ras : panneaux remplissent le cadre (affleurants) ; débordant : panneaux plus minces → le cadre dépasse, portes au centre
     const railZ=i=> (n===2&&nOpen===2)?(i===0?-RO:RO):(opers[i]?-RO:RO);   // ouvrant → rail INTÉRIEUR (-z) ; fixe → EXTÉRIEUR (+z) ; 2 ouvrants → 1 int / 1 ext
     for(let i=0;i<n;i++){ const lx=-W/2+sw*(i+.5), oper=opers[i], dir=(s.slideDirs&&s.slideDirs[i])?(s.slideDirs[i]==='D'?1:-1):((i<n/2)?1:-1), pz=railZ(i);
-      if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-DEPTH/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
+      if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP,PD); glassPane(sw-FW,H-2*FW,0,0,0); box(0.02,0.3,0.04,HM,dir<0?(sw)/2-0.04:-(sw)/2+0.04,0,-PD/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});
         if(s.moust) addSash(lx,cy,DEPTH/2+0.02,()=>{ box(sw-2*FW,H-2*FW,0.004,screenMat,0,0,0); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }   // moustiquaire SÉPARÉE par ouvrant + COULISSANTE (même sens que la porte)
-      else openingZ(lx,cy,sw+FW,H,pz); }
+      else openingZ(lx,cy,sw+FW,H,pz,PD); }
   } else if(s.family==='battant'){
     frameRect(0,cy,W,H,MC,MP);   // dormant fixe
     const inswing=s.sensOuv==='int', iw=W-2*FW, ih=H-2*FW;
@@ -745,7 +751,7 @@ function pairSliders(){ document.querySelectorAll('input[type=range]').forEach(r
     else { const u=ui('unit').value; let mm=u==='mm'?v:v*25.4; r.value=Math.min(+r.max,Math.max(+r.min,mm)); }
     r.dispatchEvent(new Event('input',{bubbles:true})); });
   r.addEventListener('input',()=>sliderToNum(r)); sliderToNum(r); }); }
-['family','w','h','unit','cadre','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
+['family','w','h','unit','cadre','cadreProf','verre','aspect','colExt','colInt','moulure','soufflage','grilles','imposte','imposteH','imposteW','quinc','coupe','moust'].forEach(id=>ui(id).addEventListener('input',()=>{ if(id==='family'){ applyDefaults(); renderFamOpts(); } refresh(); if(id==='family') setView('ext'); }));
 ui('tabs').addEventListener('click',e=>{ if(!e.target.dataset.t)return; document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); e.target.classList.add('active'); TAB=e.target.dataset.t; renderTab(); });
 ui('addItem').addEventListener('click',addToOrder);
 ui('orderList').addEventListener('click',e=>{ if(e.target.dataset.clr){ ORDER=[]; renderOrderList(); updatePrice(); if(TAB==='bons') renderTab(); } else if(e.target.dataset.i!==undefined) removeItem(+e.target.dataset.i); });
@@ -838,6 +844,7 @@ function restoreState(s){
   ui('family').value=s.family; renderFamOpts();
   set('w',s.W); set('h',s.H); set('unit',s.unit);
   if(s.cadreCode!=null) set('cadre', s.cadreCode+'|'+s.cadreNom);
+  if(s.cadreProf) set('cadreProf', s.cadreProf);
   if(s.vType!=null) set('verre', s.vType+'|'+s.vTint);
   set('aspect',s.aspect); set('colExt',s.colExt); set('colInt',s.colInt);
   set('moulure',s.moulure); set('soufflage',s.soufflage); set('grilles',s.grilles);
