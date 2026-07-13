@@ -547,8 +547,8 @@ function build3D(s){
     const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2);
       addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,MO,MP); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
         if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,z:inswing?sz:(sz+DEPTH*0.9),rot:hingeR?rotK:-rotK},crankOpen:true});   // casement : ouverture progressive ; z sort le vantail vers l'ext → dégage le cadre
-      if(!inswing){ const cx=scx+(hingeR?-sw/2+0.11:sw/2-0.11); const cg=crank(cx,FW+0.03,-DEPTH/2-0.03); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle sur le bord OUVRANT (opposé aux charnières, comme le lever) : hingeR→gauche, sinon→droite ; le bras tourne avec l'ouverture
-    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,true); bsash(iw/4,sw,false); }   // 2 vantaux : charnières au meneau central → ouvrent sur les CÔTÉS, manivelles extérieures
+      if(!inswing){ const cx=scx+(hingeR?sw/2-0.11:-sw/2+0.11); const cg=crank(cx,FW+0.03,-DEPTH/2-0.03); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle du CÔTÉ DES CHARNIÈRES (hingeR→droite, sinon→gauche) ; le bras tourne avec l'ouverture
+    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française : charnières aux montants EXTÉRIEURS → ouvrent au centre ; manivelles suivent les charnières → aux extrémités
     else bsash(0,iw,s.ouvrant==='G');   // Sens = côté ouvrant : Tirant droit → charnière gauche → ouvre+manivelle à DROITE ; Tirant gauche → inverse
   } else opening(0,cy,W,H);   // fixe
   if(s.moust && s.family==='battant'){   // moustiquaire battant = côté intérieur, figée, DANS l'épaisseur du cadre ; large pour couvrir tout le vide (bas laissé libre pour la manivelle sur le seuil)
