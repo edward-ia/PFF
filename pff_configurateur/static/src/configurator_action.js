@@ -16,7 +16,7 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=24";
+        this.src = "/pff_configurateur/static/configurateur.html?v=25";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »
@@ -41,7 +41,7 @@ export class PffConfigurator extends Component {
                 const lines = await this.orm.searchRead(
                     "pff.configuration.line",
                     [["id", "=", this.lineId]],
-                    ["config_json", "qty", "sequence"]
+                    ["config_json", "qty", "sequence", "poste_assign_json"]
                 );
                 this.existingLineIds = lines.map((l) => l.id);
                 this.editSequence = lines.length ? lines[0].sequence : false;
@@ -52,7 +52,13 @@ export class PffConfigurator extends Component {
                     } catch (e) {
                         config = {};
                     }
-                    return { config, qty: l.qty || 1 };
+                    let poste_assign = {};
+                    try {
+                        poste_assign = JSON.parse(l.poste_assign_json || "{}");
+                    } catch (e) {
+                        poste_assign = {};
+                    }
+                    return { config, qty: l.qty || 1, poste_assign };
                 });
                 if (ev.source) {
                     ev.source.postMessage({ type: "pff_restore", items }, "*");

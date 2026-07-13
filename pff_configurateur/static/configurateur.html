@@ -882,6 +882,10 @@ function restoreOrder(items){
   if(!items.length) return;
   restoreState(items[0].config);
   ORDER=[]; if(ui('itemQty')) ui('itemQty').value=items[0].qty||1;
+  // restaure les stations assignées : clé stockée `poste|section` → clé UI `poste|item|section`
+  POSTE_ASSIGN={};
+  items.forEach((it,idx)=>{ const pa=it.poste_assign||{};
+    Object.keys(pa).forEach(k=>{ const p=k.split('|'); if(p.length===2 && pa[k]) POSTE_ASSIGN[p[0]+'|'+idx+'|'+p[1]]=pa[k]; }); });
   renderOrderList(); updatePrice(); if(TAB==='bons') renderTab();
 }
 window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_restore') restoreOrder(m.items); });
