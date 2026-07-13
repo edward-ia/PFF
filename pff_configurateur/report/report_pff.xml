@@ -371,7 +371,28 @@
                                 </td>
                             </tr>
                         </table>
-                        <t t-if="wd['feuilles']">
+                        <t t-if="wd['poste'] == 'Validation'">
+                            <!-- Contrôle qualité : produit fini + checklist à cocher -->
+                            <t t-set="v" t-value="wd['validation']"/>
+                            <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px;">
+                                <tr>
+                                    <td style="border:1px solid #999;padding:6px;width:50%;"><b>Produit</b><br/><span t-esc="v['product']['type']"/></td>
+                                    <td style="border:1px solid #999;padding:6px;"><b>Dimensions</b><br/><span t-esc="v['product']['width']"/> × <span t-esc="v['product']['height']"/> mm</td>
+                                </tr>
+                            </table>
+                            <div style="font-weight:bold;font-size:13px;margin:8px 0 4px;">Contrôle qualité — points à vérifier</div>
+                            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                                <t t-foreach="v['checklist']" t-as="c">
+                                    <tr>
+                                        <td style="border:1px solid #ccc;padding:5px 8px;width:26px;text-align:center;"><span style="display:inline-block;width:12px;height:12px;border:1px solid #333;"/></td>
+                                        <td style="border:1px solid #ccc;padding:5px 8px;"><span t-esc="c"/></td>
+                                        <td style="border:1px solid #ccc;padding:5px 8px;width:120px;color:#888;">Conforme / Non</td>
+                                    </tr>
+                                </t>
+                            </table>
+                            <div style="margin-top:16px;font-size:11px;">Contrôleur : ______________________　　Date : ____________　　Signature : ______________________</div>
+                        </t>
+                        <t t-elif="wd['feuilles']">
                             <t t-foreach="wd['feuilles']" t-as="f">
                                 <t t-call="pff_configurateur.report_pff_bt_feuille"/>
                             </t>

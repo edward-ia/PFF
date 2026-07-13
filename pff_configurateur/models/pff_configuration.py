@@ -128,6 +128,9 @@ class PffConfiguration(models.Model):
             # configurateur. Après action_confirm (état ≠ brouillon), Odoo ne
             # recalcule plus les OT → nos modifications sont conservées.
             self._route_line_workorders(mo, line)
+            # Retire les OT d'un poste sans rien à faire pour ce produit
+            # (ex. Sous-ensemble sans meneau → bon de travail vide).
+            self._prune_empty_workorders(mo, line)
             mo.action_confirm()
         return True
 
@@ -232,6 +235,40 @@ class PffConfiguration(models.Model):
                 _logger.warning(
                     "PFF: routage par morceau échoué pour l'OT %s (OF %s)",
                     wo.display_name, mo.name, exc_info=True)
+        return True
+
+    # Postes dont le contenu est UNIQUEMENT par morceau (pas de contenu produit) :
+    # si aucun morceau ne les concerne, leur OT serait vide → à supprimer.
+    # (Assemblage = étiquettes, Validation = checklist → toujours du contenu.)
+    _MORCEAU_ONLY_POSTES = {'scie', 'poincon', 'soudage', 'sousens'}
+
+    def _prune_empty_workorders(self, mo, line):
+        """Supprime les OT génériques d'un poste qui n'a AUCUN morceau à traiter
+        pour ce produit (ex. Sous-ensemble sans meneau) → évite d'envoyer un bon
+        de travail vide à un poste. Best-effort, non bloquant."""
+        try:
+            comps = json.loads(line.comps_json or '[]')
+        except (ValueError, TypeError):
+            comps = []
+        grps_present = [g for g in self._BT_ORDER
+                        if any((c.get('grp') or '') == g for c in comps)]
+        for wo in list(mo.workorder_ids):
+            try:
+                if wo.pff_section:
+                    continue  # OT déjà routé sur un morceau précis → a du contenu
+                code = self._poste_code_of_wc(wo.workcenter_id.name)
+                if code not in self._MORCEAU_ONLY_POSTES:
+                    continue  # Assemblage / Validation / autre → contenu produit
+                has_morceau = any(
+                    code in {self._poste_code_of_wc(p)
+                             for p in self._BT_POSTES.get(g, [])}
+                    for g in grps_present)
+                if not has_morceau:
+                    wo.unlink()
+            except Exception:
+                _logger.warning(
+                    "PFF: purge d'un OT vide échouée (OF %s)", mo.name,
+                    exc_info=True)
         return True
 
     def _compute_production_count(self):
@@ -733,26 +770,54 @@ class PffConfiguration(models.Model):
         return {'feuilles': feuilles, 'thermos': thermos,
                 'etiquettes': etiquettes, 'validation': validation}
 
+    # Points de contrôle du produit fini (poste Validation / Contrôle qualité).
+    _QC_CHECKLIST = [
+        'Dimensions conformes (largeur × hauteur)',
+        'Équerrage — diagonales égales',
+        'Vitrage : thermos conforme, sans rayure ni bris',
+        'Quincaillerie : opération fluide et verrouillage',
+        'Étanchéité des joints',
+        'Finition : couleur et surface sans défaut',
+        'Moustiquaire posée (si applicable)',
+        'Identification / étiquette apposée',
+        'Nettoyage et emballage — prêt à expédier',
+    ]
+
+    def _bt_validation_data(self, line):
+        """Données du bon de Contrôle qualité : produit fini + checklist."""
+        fam_labels = dict(FAMILIES)
+        prod = {
+            'type': fam_labels.get(line.family, line.family) if line else '',
+            'width': int(line.width or 0) if line else 0,
+            'height': int(line.height or 0) if line else 0,
+        }
+        return {'product': prod, 'checklist': list(self._QC_CHECKLIST)}
+
     def _bt_data_for_workorder(self, wo):
         """Ordre de travail PAR STATION (mrp.workorder) : ne garde que
         (1) le produit de CET OF (via `mo.pff_line_id`) — pas toute la commande,
         et (2) le morceau routé vers CETTE station (`wo.pff_section`, sinon
         déduit du nom « … — Cadre »). Si l'OT est générique (aucun morceau), on
         garde toutes les composantes du poste. Le thermos reste joint à
-        l'Assemblage. `base` = poste sans le n° de station (« Scie 1 » → « Scie »)."""
+        l'Assemblage. Le poste Validation = contrôle qualité du produit fini
+        (checklist, pas de morceau). `base` = poste sans le n° de station."""
         self.ensure_one()
         base = self._wc_base_name(wo.workcenter_id.name).replace('/', ' ')
         section = wo.pff_section or ''
         if not section and ' — ' in (wo.name or ''):
             section = wo.name.rsplit(' — ', 1)[1]
         only_line = wo.production_id.pff_line_id or None
+        # Contrôle qualité : pas de pièce à couper → checklist du produit fini.
+        if base == 'Validation':
+            return {'poste': base, 'section': '', 'feuilles': [], 'thermos': [],
+                    'validation': self._bt_validation_data(only_line)}
         data = self._get_bt_data(only_line=only_line)
         feuilles = [f for f in data['feuilles'] if base in f['postes']]
         if section:
             feuilles = [f for f in feuilles if f['name'] == section.upper()]
         thermos = data['thermos'] if base in ('Assemblage', 'Achat sur commande') else []
-        return {'poste': base, 'section': section,
-                'feuilles': feuilles, 'thermos': thermos}
+        return {'poste': base, 'section': section, 'feuilles': feuilles,
+                'thermos': thermos, 'validation': None}
 
 
 class PffConfigurationLine(models.Model):
