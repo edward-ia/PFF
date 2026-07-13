@@ -412,21 +412,28 @@ const view=ui('view3d');
 const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15; renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 view.appendChild(renderer.domElement);
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0xffffff);
+const scene=new THREE.Scene();
+// STUDIO : fond dégradé (backdrop) au lieu du blanc plat → look « photo produit »
+const _bgc=document.createElement('canvas'); _bgc.width=8; _bgc.height=256; const _bx=_bgc.getContext('2d');
+const _grd=_bx.createLinearGradient(0,0,0,256); _grd.addColorStop(0,'#e9edf1'); _grd.addColorStop(.5,'#f8fafc'); _grd.addColorStop(1,'#dbe1e7');
+_bx.fillStyle=_grd; _bx.fillRect(0,0,8,256);
+const _bgTex=new THREE.CanvasTexture(_bgc); _bgTex.colorSpace=THREE.SRGBColorSpace; scene.background=_bgTex;
 scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(),0.04).texture;
 const camera=new THREE.PerspectiveCamera(45,1,0.05,100); camera.position.set(2,1.3,3.2);
 const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.target.set(0,.8,0);
 const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(3,5,4); key.castShadow=true; key.shadow.mapSize.set(2048,2048);
 key.shadow.camera.left=-3;key.shadow.camera.right=3;key.shadow.camera.top=4;key.shadow.camera.bottom=-1;key.shadow.bias=-0.0004; scene.add(key); scene.add(new THREE.AmbientLight(0xffffff,.45));
 const fill=new THREE.DirectionalLight(0xffffff,.75); fill.position.set(-4,3,-5); scene.add(fill);   // appoint arrière (vue intérieure)
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0xd7dce3,roughness:1})); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
-const wall=new THREE.Mesh(new THREE.PlaneGeometry(40,20),new THREE.MeshStandardMaterial({color:0xeaedf1,roughness:1})); wall.position.set(0,10,-0.22); wall.receiveShadow=true; scene.add(wall);
+// STUDIO : sol légèrement brillant (reflète l'environnement → surface polie) + backdrop clair
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0xeef1f4,roughness:.34,metalness:0,envMapIntensity:1})); ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+const wall=new THREE.Mesh(new THREE.PlaneGeometry(40,20),new THREE.MeshStandardMaterial({color:0xf2f4f6,roughness:1})); wall.position.set(0,10,-0.22); wall.receiveShadow=true; scene.add(wall);
 const root=new THREE.Group(); scene.add(root);
 let CUR=root, SASHES=[], GRILLE='none', GLW=0.62, GLH=0.46;   // CUR=groupe courant ; SASHES=ouvrants ; GRILLE=croisillons ; GLW/GLH=fractions vitrage porte
 
 const FW=0.06,GT=0.018,MM=0.001; let DEPTH=0.143, FLUSH=false, CFM=null;   // DEPTH = profondeur réelle du cadre (fixée par build3D selon le profilé) ; FLUSH = style affleurant ; CFM = matériau coupe-froid
 function cadreDepth(nom){ const m=(nom||'').match(/(\d+)\s+(\d+)\/(\d+)/); if(m) return ((+m[1])+(+m[2])/(+m[3]))*0.0254; const m2=(nom||'').match(/(\d+(?:\.\d+)?)/); return m2?(+m2[1])*0.0254:0.143; }   // « 5 5/8 » → 0.143 m
-function frameMat(col){ const c=COLORS[col]||COLORS.white; return new THREE.MeshPhysicalMaterial({color:c.c,roughness:c.r,metalness:0,clearcoat:.5,clearcoatRoughness:.3}); }
+// STUDIO : satin PVC plus marqué (clearcoat + reflets d'environnement un peu plus forts)
+function frameMat(col){ const c=COLORS[col]||COLORS.white; return new THREE.MeshPhysicalMaterial({color:c.c,roughness:c.r,metalness:0,clearcoat:.65,clearcoatRoughness:.22,envMapIntensity:1.15}); }
 function glassMat(s){ const g=VERRE[s.vType].tint[s.vTint];
   if(s.aspect==='depoli') return new THREE.MeshPhysicalMaterial({color:0xeef2f3,roughness:.85,transmission:.65,thickness:.04,ior:1.4,transparent:true,opacity:.9,envMapIntensity:.6}); // dépoli / givré
   return new THREE.MeshPhysicalMaterial({color:g,roughness:.06,transmission:.9,thickness:.02,ior:1.5,transparent:true,envMapIntensity:.55,clearcoat:.5,clearcoatRoughness:.12,attenuationColor:g,attenuationDistance:1.2}); }
@@ -436,7 +443,20 @@ const screenMat=new THREE.MeshStandardMaterial({color:0x6b7077,roughness:.95,tra
 let HM=steelMat, FMext, FMint, GM;
 // Matériaux bicolores par composant {ext,int} — remplis par build3D (couleurs ext/int distinctes)
 let MC, MO, MP, MMo;   // MC=cadre(dormant), MO=ouvrant/vantail, MP=parclose, MMo=moulure
-function box1(w,h,d,m,x,y,z){ const me=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
+// STUDIO : biseautage des arêtes des profilés (accroche la lumière → look « rendu produit » au lieu de « CAO »)
+const BEVEL=0.0016;   // ~1,6 mm ; mettre 0 pour retrouver les arêtes vives
+function chamferGeo(w,h,d,ch){
+  w=Math.max(w,0.001); h=Math.max(h,0.001); d=Math.max(d,0.001);
+  ch=Math.min(ch, w*0.4, h*0.4, d*0.4);
+  if(ch<0.0004) return new THREE.BoxGeometry(w,h,d);              // trop fin pour biseauter → boîte vive
+  const hw=Math.max(w/2-ch,0.0002), hh=Math.max(h/2-ch,0.0002);  // rectangle réduit ; le bevel le regonfle à w×h
+  const s=new THREE.Shape(); s.moveTo(-hw,-hh); s.lineTo(hw,-hh); s.lineTo(hw,hh); s.lineTo(-hw,hh); s.lineTo(-hw,-hh);
+  const dep=Math.max(d-2*ch,0.0005);
+  const g=new THREE.ExtrudeGeometry(s,{depth:dep,bevelEnabled:true,bevelThickness:ch,bevelSize:ch,bevelSegments:2,steps:1,curveSegments:1});
+  g.center();                                                    // ExtrudeGeometry part de z=0 → recentrer sur l'origine
+  return g;
+}
+function box1(w,h,d,m,x,y,z){ const me=new THREE.Mesh(BEVEL>0?chamferGeo(w,h,d,BEVEL):new THREE.BoxGeometry(Math.max(w,0.001),Math.max(h,0.001),Math.max(d,0.001)),m); me.position.set(x,y,z); me.castShadow=true; me.receiveShadow=true; CUR.add(me); }
 function box(w,h,d,m,x,y,z){   // paire {ext,int} → coupe en 2 demi-épaisseurs : moitié avant (+z)=ext, moitié arrière (-z)=int (couleur correcte y compris sur les tranches)
   if(m&&m.ext){ box1(w,h,d/2,m.ext,x,y,z+d/4); box1(w,h,d/2,m.int,x,y,z-d/4); }
   else box1(w,h,d,m,x,y,z); }
