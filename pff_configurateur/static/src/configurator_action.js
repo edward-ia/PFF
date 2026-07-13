@@ -16,7 +16,7 @@ export class PffConfigurator extends Component {
         this.notification = useService("notification");
         // ?v= : anti-cache — incrémenter à chaque modif de configurateur.html
         // pour forcer le navigateur à recharger le fichier statique.
-        this.src = "/pff_configurateur/static/configurateur.html?v=25";
+        this.src = "/pff_configurateur/static/configurateur.html?v=26";
         const a = this.props.action || {};
         this.configId = (a.params && a.params.config_id) || (a.context && a.context.config_id);
         // line_id défini = on reprend/remplace CETTE ligne (bouton « Reprendre »
@@ -29,14 +29,61 @@ export class PffConfigurator extends Component {
         onWillUnmount(() => window.removeEventListener("message", this._onMessage));
     }
 
+    // Nom d'un poste de travail → code configurateur (via préfixe), en miroir de
+    // _POSTE_CODE_HINT côté Python. « Validation N » → 'validation'.
+    _posteCode(name) {
+        const base = (name || "").replace(/\s*\d+\s*$/, "").trim().toLowerCase();
+        const hints = {
+            scie: "scie", poincon: "poin", soudage: "soud",
+            sousens: "sous", assemblage: "assemb", validation: "valid",
+        };
+        for (const code in hints) {
+            if (base.startsWith(hints[code])) {
+                return code;
+            }
+        }
+        return null;
+    }
+
+    // Lit les vrais postes de travail Odoo et renvoie {code:[n° stations triés]}.
+    async _loadStations() {
+        const stations = {};
+        try {
+            const wcs = await this.orm.searchRead("mrp.workcenter", [], ["name"]);
+            for (const wc of wcs) {
+                const code = this._posteCode(wc.name);
+                if (!code) {
+                    continue;
+                }
+                const m = (wc.name || "").match(/(\d+)\s*$/);
+                if (!m) {
+                    continue;
+                }
+                const n = parseInt(m[1], 10);
+                (stations[code] = stations[code] || []).push(n);
+            }
+            for (const code in stations) {
+                stations[code] = [...new Set(stations[code])].sort((a, b) => a - b);
+            }
+        } catch (e) {
+            // best-effort : le configurateur retombe sur 1–6 par défaut
+        }
+        return stations;
+    }
+
     async _onMessage(ev) {
         const msg = ev.data;
         if (!msg) {
             return;
         }
-        // Le configurateur signale qu'il est prêt → si on reprend une ligne,
-        // on lui renvoie sa config à recharger.
+        // Le configurateur signale qu'il est prêt → on lui renvoie les vraies
+        // stations par poste (mrp.workcenter) et, si on reprend une ligne, sa
+        // config à recharger.
         if (msg.type === "pff_ready") {
+            if (ev.source) {
+                const stations = await this._loadStations();
+                ev.source.postMessage({ type: "pff_stations", stations }, "*");
+            }
             if (this.lineId && this.configId) {
                 const lines = await this.orm.searchRead(
                     "pff.configuration.line",

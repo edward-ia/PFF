@@ -136,7 +136,7 @@ class PffConfiguration(models.Model):
     # via le PRÉFIXE de son nom — robuste aux variantes (« Poinçon/machinage »…).
     _POSTE_CODE_HINT = {
         'scie': 'scie', 'poincon': 'poin', 'soudage': 'soud',
-        'sousens': 'sous', 'assemblage': 'assemb', 'achat': 'achat',
+        'sousens': 'sous', 'assemblage': 'assemb', 'validation': 'valid',
     }
 
     @staticmethod
@@ -198,6 +198,16 @@ class PffConfiguration(models.Model):
                 # nom du poste), sinon « 1 ».
                 m = re.search(r'(\d+)\s*$', wo.workcenter_id.name or '')
                 default_station = m.group(1) if m else '1'
+                # Contrôle qualité : 1 OT par PRODUIT (pas d'éclatement par
+                # morceau) → simple réassignation de la station choisie.
+                if code == 'validation':
+                    station = secmap.get('Produit') or next(iter(secmap.values()), None)
+                    if station:
+                        wc = Workcenter.search(
+                            [('name', '=', '%s %s' % (base, station))], limit=1)
+                        if wc:
+                            wo.workcenter_id = wc.id
+                    continue
                 # Sections de CE produit qui passent par ce poste — comparaison
                 # par CODE de poste (scie/poincon/…) et non par nom exact, pour
                 # rester robuste aux écarts de nommage (« Poinçon/machinage » vs

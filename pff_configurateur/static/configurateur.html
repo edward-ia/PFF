@@ -62,7 +62,7 @@
     clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%,7px 50%); }
   .poste:first-child{ clip-path:polygon(0 0,calc(100% - 7px) 0,100% 50%,calc(100% - 7px) 100%,0 100%); margin-left:0; }
   .poste.scie{background:#e07a2e;} .poste.poincon{background:#e89a4e;} .poste.soudage{background:#3a7bd5;}
-  .poste.sousens{background:#b455a0;} .poste.assemblage{background:#b455a0;} .poste.achat{background:#6b7480;}
+  .poste.sousens{background:#b455a0;} .poste.assemblage{background:#b455a0;} .poste.validation{background:#3aa76d;}
   .poste.dim{ opacity:.32; }
   .bt-poste{ display:flex; align-items:center; gap:6px; }
   .bt-poste label{ margin:0; font-size:11px; color:var(--muted); }
@@ -607,22 +607,23 @@ function renderOrderList(){
 }
 
 /* ===== BONS DE TRAVAIL (calqué sur le #015980 de Fusion) ===== */
-const POSTE_LBL={scie:'Scie',poincon:'Poinçon / machinage',soudage:'Soudage',sousens:'Sous-ensemble',assemblage:'Assemblage',achat:'Achat sur commande'};
+const POSTE_LBL={scie:'Scie',poincon:'Poinçon / machinage',soudage:'Soudage',sousens:'Sous-ensemble',assemblage:'Assemblage',validation:'Contrôle qualité'};
 const CASIER={Cadre:'CaseC',Volet:'CaseV',Parclose:'Pare',Meneau:'MenoC','Renfort acier':'Renf',Moustiquaire:'Moust'};
 function band(postes,sel){ return `<span class="poste-band">`+postes.map(p=>`<span class="poste ${p}${sel&&sel!=='all'&&sel!==p?' dim':''}">${POSTE_LBL[p]}</span>`).join('')+`</span>`; }
 function btTable(rows,grp){ let i=0; const tr=rows.map(c=>{ i++; const cas=(CASIER[grp]||'Case')+' '+String(i).padStart(2,'0');
     return `<tr><td>${c.item||1}</td><td>${c.code}</td><td>${c.desc}</td><td class="cas">${cas}</td><td class="num">${c.lng?Math.round(c.lng):'—'}</td><td class="num">${c.qte}</td></tr>`; }).join('');
   return `<table class="bt-tbl"><thead><tr><th>Item</th><th>Code</th><th>Désignation</th><th>Casier</th><th>Long. TIGER (mm)</th><th>Qté</th></tr></thead><tbody>${tr}</tbody></table>`; }
 let BT_POSTE='all';
-const POSTES_ALL=['scie','poincon','soudage','sousens','assemblage','achat'];
-const STATIONS=[1,2,3,4,5,6];
-let POSTE_ASSIGN={};   // assignations mémorisées, clé `${poste}|${section}` → n° de station (1–6)
+const POSTES_ALL=['scie','poincon','soudage','sousens','assemblage'];   // le Contrôle qualité (validation) se choisit dans l'onglet Validations
+let STATIONS_BY_POSTE={};   // {code:[n,…]} = vraies stations par poste, reçues d'Odoo (mrp.workcenter)
+function stationsFor(code){ const a=STATIONS_BY_POSTE[code]; return (a&&a.length)?a:[1,2,3,4,5,6]; }
+let POSTE_ASSIGN={};   // assignations mémorisées, clé `${poste}|${section}` → n° de station
 function renderBons(){
   const items=orderItems(), nItems=items.length, totQ=items.reduce((a,it)=>a+it.qty,0), sel=BT_POSTE;
   // Sélecteur de station — désormais par PRODUIT × section (clé `poste|item|section`)
   const stationSel=(itemIdx,grp)=>{ if(sel==='all') return ''; const key=sel+'|'+itemIdx+'|'+grp, cur=POSTE_ASSIGN[key]||'';
-    return `<select class="stsel" data-key="${key}" title="Poste (1–6) qui exécute cette tâche">`+
-      `<option value="">Poste n°…</option>`+STATIONS.map(n=>`<option value="${n}"${cur==n?' selected':''}>Poste ${n}</option>`).join('')+`</select>`; };
+    return `<select class="stsel" data-key="${key}" title="Poste qui exécute cette tâche">`+
+      `<option value="">Poste n°…</option>`+stationsFor(sel).map(n=>`<option value="${n}"${cur==n?' selected':''}>Poste ${n}</option>`).join('')+`</select>`; };
   const secDefs=[
     {grp:'Cadre',n:'①',postes:['scie','poincon','soudage']},
     {grp:'Volet',n:'②',postes:['scie','poincon','soudage']},
@@ -631,7 +632,7 @@ function renderBons(){
     {grp:'Renfort acier',n:'⑤',postes:['scie','poincon']},
     {grp:'Moustiquaire',n:'⑥',postes:['scie','assemblage']},
   ];
-  const thPostes=['achat','assemblage'];
+  const thPostes=['assemblage'];
   const opts=`<option value="all"${sel==='all'?' selected':''}>Tous les postes</option>`+POSTES_ALL.map(p=>`<option value="${p}"${sel===p?' selected':''}>${POSTE_LBL[p]}</option>`).join('');
   let html=`<div class="bt-head"><div><b>BON DE TRAVAIL</b> <span class="pill">#015980 · maquette</span></div>
     <div class="bt-poste"><label>Poste :</label><select id="btPoste">${opts}</select></div>
@@ -647,7 +648,7 @@ function renderBons(){
       if(!rows.length) return;
       secHtml+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">${d.n} ${d.grp.toUpperCase()}</span>${stationSel(idx,d.grp)}</span>${band(d.postes,sel)}</div>${btTable(rows,d.grp)}</div>`;
     });
-    // Thermos de CE produit (postes achat / assemblage)
+    // Thermos de CE produit (verre acheté, rattaché à l'assemblage)
     if(sel==='all'||thPostes.includes(sel)){
       let trows=''; dv.thermos.forEach(t=>{ trows+=`<tr><td>${idx+1}</td><td>${it.s.vType==='triple'?'Triple':'Double 1'} Low-E Argon</td><td>${Math.round(t.w)} × ${Math.round(t.h)} mm · ${t.desc}</td><td class="cas">Lot —</td><td class="num">${VERRE[it.s.vType].ep}</td><td class="num">${t.qte*it.qty}</td></tr>`; });
       if(trows) secHtml+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">⑧ THERMOS (achat)</span>${stationSel(idx,'Thermos')}</span>${band(thPostes,sel)}</div>
@@ -679,6 +680,11 @@ function renderTab(){
     else if(TAB==='thermos'){ const rows=dv.thermos.length?dv.thermos.map(t=>`<tr><td>${t.desc}</td><td class="num">${fmt(t.w)} × ${fmt(t.h)}</td><td class="num">${t.qte}</td></tr>`).join(''):`<tr><td colspan="3" class="pill">Aucun vitrage (ex. porte pleine)</td></tr>`;
       html+=`<table><thead><tr><th>Section</th><th>Dimension verre</th><th>Qté</th></tr></thead><tbody>${rows}</tbody></table>`; }
     else if(TAB==='valid'){ const rows=validate(s,dv).map(v=>`<tr><td>${v.k}</td><td>${v.v}</td><td><span class="badge b-${v.b}">${v.t}</span></td></tr>`).join('');
+      const key='validation|'+idx+'|Produit', cur=POSTE_ASSIGN[key]||'';   // Contrôle qualité = 1 poste PAR PRODUIT (OT unique sur la fenêtre assemblée)
+      html+=`<div class="bt-sec"><div class="bt-sec-h"><span class="bt-sec-left"><span class="bt-sec-t">CONTRÔLE QUALITÉ</span>`+
+        `<select class="stsel" data-key="${key}" title="Poste qui exécute le contrôle qualité"><option value="">Poste n°…</option>`+
+        stationsFor('validation').map(n=>`<option value="${n}"${cur==n?' selected':''}>Poste ${n}</option>`).join('')+`</select></span>${band(['validation'],'validation')}</div>`+
+        `<div class="note">Poste qui exécute le contrôle qualité final de ce produit assemblé.</div></div>`;
       html+=`<table><thead><tr><th>Critère</th><th>Valeur</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table>`; }
     else if(TAB==='unites'){ html+=`<table><thead><tr><th>Format</th><th>Largeur</th><th>Hauteur</th></tr></thead><tbody>
       <tr><td>mm (pivot usine)</td><td class="num">${Math.round(s.W)}</td><td class="num">${Math.round(s.H)}</td></tr>
@@ -888,7 +894,9 @@ function restoreOrder(items){
     Object.keys(pa).forEach(k=>{ const p=k.split('|'); if(p.length===2 && pa[k]) POSTE_ASSIGN[p[0]+'|'+idx+'|'+p[1]]=pa[k]; }); });
   renderOrderList(); updatePrice(); if(TAB==='bons') renderTab();
 }
-window.addEventListener('message',ev=>{ const m=ev.data; if(m&&m.type==='pff_restore') restoreOrder(m.items); });
+window.addEventListener('message',ev=>{ const m=ev.data; if(!m) return;
+  if(m.type==='pff_restore') restoreOrder(m.items);
+  else if(m.type==='pff_stations'){ STATIONS_BY_POSTE=m.stations||{}; if(TAB==='bons'||TAB==='valid') renderTab(); } });
 
 renderFamOpts(); resize(); refresh(); loop();
 try{ window.parent.postMessage({type:'pff_ready'}, '*'); }catch(e){}
