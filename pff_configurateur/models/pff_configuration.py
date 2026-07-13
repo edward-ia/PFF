@@ -198,9 +198,13 @@ class PffConfiguration(models.Model):
                 # nom du poste), sinon « 1 ».
                 m = re.search(r'(\d+)\s*$', wo.workcenter_id.name or '')
                 default_station = m.group(1) if m else '1'
-                # Sections de CE produit qui passent par ce poste.
+                # Sections de CE produit qui passent par ce poste — comparaison
+                # par CODE de poste (scie/poincon/…) et non par nom exact, pour
+                # rester robuste aux écarts de nommage (« Poinçon/machinage » vs
+                # « Poinçon machinage »).
                 sections = [g for g in grps_present
-                            if base in self._BT_POSTES.get(g, [])]
+                            if code in {self._poste_code_of_wc(p)
+                                        for p in self._BT_POSTES.get(g, [])}]
                 if not sections:
                     continue
                 for section in sections:

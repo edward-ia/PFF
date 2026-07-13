@@ -506,7 +506,7 @@ function build3D(s){
   // l'intérieur prend la couleur int. (colInt). Un seul choix pour toute la fenêtre.
   MC = MO = MP = MMo = {ext:FMext, int:FMint};
   DEPTH=cadreDepth(s.cadreNom); FLUSH=/flush/i.test(s.cadreNom||'');   // cadre → profondeur réelle + style flush
-  const fam=FAMILIES[s.family], W=s.W*MM, H=s.H*MM, cy=H/2, openRight=(s.ouvrant!=='G'); GRILLE=s.grilles||'none'; GLW=s.glassW||0.62; GLH=s.glassH||0.46;
+  const fam=FAMILIES[s.family], W=s.W*MM, H=s.H*MM, cy=H/2; GRILLE=s.grilles||'none'; GLW=s.glassW||0.62; GLH=s.glassH||0.46;
   if(fam.door){
     const sl=0.3, hasL=s.sidelights==='gauche'||s.sidelights==='deux', hasR=s.sidelights==='droite'||s.sidelights==='deux';
     const total=W+(hasL?sl:0)+(hasR?sl:0); let x=-total/2;
@@ -520,7 +520,7 @@ function build3D(s){
         if(oper){ addSash(lx,cy,pz,()=>{ frameRect(0,0,sw+FW,H,MO,MP,PD); glassPane(sw-FW,H-2*FW,0,0,0); const hxp=dir<0?(sw)/2-0.06:-(sw)/2+0.06; box(0.03,0.34,0.05,HM,hxp,0,-PD/2); box(0.03,0.34,0.05,HM,hxp,0,PD/2); },{kind:'slide',open:{x:lx+dir*sw*0.9,y:cy,rot:0}});   // poignées int + EXT (patio)
           if(s.moust) addSash(lx,cy,DEPTH/2-0.012,()=>{ box(sw-FW*0.5,H-FW*0.5,0.004,screenMat,0,0,0); },{kind:'slide',screen:true,open:{x:lx+dir*sw*0.9,y:cy,rot:0}}); }   // moustiquaire par ouvrant, coulissante, DANS l'épaisseur du cadre, large pour couvrir le vide
         else openingZ(lx,cy,sw+FW,H,pz,PD); }
-    } else { const hingeR=openRight, px=hingeR?(x+W-FW):(x+FW);
+    } else { const hingeR=(s.ouvrant==='G'), px=hingeR?(x+W-FW):(x+FW);   // Sens = côté ouvrant : Tirant droit → charnière gauche → ouvre à droite (cohérent avec la flèche 2D)
       addSash(px,cy,0,()=>{ const lcx=(x+W/2)-px, hx=lcx+(hingeR?-W/2+0.06:W/2-0.06); leaf(lcx,0,W,H,s.panneau); lever(hx,0,-DEPTH/2,HM,-1); lever(hx,0,DEPTH/2,HM,1); },{kind:'swing',open:{x:px,y:cy,z:DEPTH*0.9,rot:hingeR?1.5:-1.5}}); }   // pivote vers l'EXTÉRIEUR (+z) en sortant du cadre (dégagement) ; poignée des deux côtés (int + ext)
     x+=W; if(hasR) opening(x+sl/2,cy,sl,H);
   } else if(s.family==='guillotine'){
@@ -548,8 +548,8 @@ function build3D(s){
       addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,MO,MP); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
         if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,z:inswing?sz:(sz+DEPTH*0.9),rot:hingeR?rotK:-rotK},crankOpen:true});   // casement : ouverture progressive ; z sort le vantail vers l'ext → dégage le cadre
       if(!inswing){ const cx=scx+(hingeR?-sw/2+0.11:sw/2-0.11); const cg=crank(cx,FW+0.03,-DEPTH/2-0.03); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle sur le bord OUVRANT (opposé aux charnières, comme le lever) : hingeR→gauche, sinon→droite ; le bras tourne avec l'ouverture
-    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
-    else bsash(0,iw,openRight);
+    if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,true); bsash(iw/4,sw,false); }   // 2 vantaux : charnières au meneau central → ouvrent sur les CÔTÉS, manivelles extérieures
+    else bsash(0,iw,s.ouvrant==='G');   // Sens = côté ouvrant : Tirant droit → charnière gauche → ouvre+manivelle à DROITE ; Tirant gauche → inverse
   } else opening(0,cy,W,H);   // fixe
   if(s.moust && s.family==='battant'){   // moustiquaire battant = côté intérieur, figée, DANS l'épaisseur du cadre ; large pour couvrir tout le vide (bas laissé libre pour la manivelle sur le seuil)
     box(W-FW,H-2*FW,0.004,screenMat,0,cy,-DEPTH/2+0.012); }
