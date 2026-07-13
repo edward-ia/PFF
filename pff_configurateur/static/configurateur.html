@@ -547,7 +547,7 @@ function build3D(s){
     const bsash=(scx,sw,hingeR)=>{ const px=scx+(hingeR?sw/2:-sw/2);
       addSash(px,cy,sz,()=>{ const lcx=scx-px; frameRect(lcx,0,sw+2*ov,ih+2*ov,MO,MP); glassPane(sw+2*ov-2*FW,ih+2*ov-2*FW,lcx,0,0);
         if(inswing) lever(lcx+(hingeR?-sw/2+0.05:sw/2-0.05),-0.05,-DEPTH/2); },{kind:'swing',open:{x:px,y:cy,z:inswing?sz:(sz+DEPTH*0.9),rot:hingeR?rotK:-rotK},crankOpen:true});   // casement : ouverture progressive ; z sort le vantail vers l'ext → dégage le cadre
-      if(!inswing){ const cg=crank(scx+sw/2-0.11,FW+0.03,-DEPTH/2-0.03); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle juste au-dessus du seuil (visible), côté droit, saillie intérieure modérée ; le bras tourne avec l'ouverture
+      if(!inswing){ const cx=scx+(hingeR?-sw/2+0.11:sw/2-0.11); const cg=crank(cx,FW+0.03,-DEPTH/2-0.03); SASHES[SASHES.length-1].crankArm=cg; } };   // manivelle sur le bord OUVRANT (opposé aux charnières, comme le lever) : hingeR→gauche, sinon→droite ; le bras tourne avec l'ouverture
     if(s.vantaux===2){ const sw=iw/2; box(FW*0.8,ih,DEPTH,MC,0,cy,0); bsash(-iw/4,sw,false); bsash(iw/4,sw,true); }   // 2 vantaux à la française + meneau central
     else bsash(0,iw,openRight);
   } else opening(0,cy,W,H);   // fixe
@@ -567,12 +567,27 @@ function build3D(s){
 
 /* ===== VUE 2D ===== */
 function draw2D(s){
-  const fam=FAMILIES[s.family], tot=s.W,h=s.H,sc=Math.min(460/tot,150/h),w=tot*sc,hh=h*sc,ox=70,oy=24,bl='#4ea1ff',mu='#7f8a98';
+  const fam=FAMILIES[s.family], tot=s.W,h=s.H,sc=Math.min(460/tot,150/h),w=tot*sc,hh=h*sc,ox=70,oy=24,bl='#4ea1ff',mu='#7f8a98',ar='#e8a13a';
   let g=`<svg width="600" height="220" viewBox="0 0 600 220"><rect x="${ox}" y="${oy}" width="${w}" height="${hh}" fill="none" stroke="#cdd6e0" stroke-width="2"/>`;
   const vline=x=>`<line x1="${x}" y1="${oy}" x2="${x}" y2="${oy+hh}" stroke="${mu}" stroke-width="1.5"/>`;
-  if((s.family==='coulissant'||s.family==='porte_patio')){ const n=s.sections; for(let i=1;i<n;i++) g+=vline(ox+w/n*i); }
-  if(s.family==='guillotine'){ g+=`<line x1="${ox}" y1="${oy+hh/2}" x2="${ox+w}" y2="${oy+hh/2}" stroke="${mu}" stroke-width="1.5"/>`; }
-  if(fam.door && s.family!=='porte_patio' && s.panneau==='mi'){ g+=`<line x1="${ox}" y1="${oy+hh*0.5}" x2="${ox+w}" y2="${oy+hh*0.5}" stroke="${mu}"/>`; }
+  // petite flèche indiquant le côté / sens d'ouverture ; d = 'L','R','U','D' (gauche/droite/haut/bas)
+  const arrow=(cx,cy,d,len)=>{ len=len||14; const hx=d==='L'?-1:d==='R'?1:0, hy=d==='U'?-1:d==='D'?1:0;
+    const ex=cx+hx*len, ey=cy+hy*len, sx=cx-hx*len, sy=cy-hy*len, hb=5;   // barbes de la pointe
+    const b1x=ex-hx*hb-hy*hb, b1y=ey-hy*hb-hx*hb, b2x=ex-hx*hb+hy*hb, b2y=ey-hy*hb+hx*hb;
+    return `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${ar}" stroke-width="1.6"/><path d="M${b1x} ${b1y} L${ex} ${ey} L${b2x} ${b2y}" fill="none" stroke="${ar}" stroke-width="1.6"/>`; };
+  if((s.family==='coulissant'||s.family==='porte_patio')){ const n=s.sections; for(let i=1;i<n;i++) g+=vline(ox+w/n*i);
+    for(let i=0;i<n;i++){ const oper=!s.openSecs||s.openSecs[i]; if(!oper) continue;
+      const dir=(s.slideDirs&&s.slideDirs[i])?s.slideDirs[i]:((i<n/2)?'D':'G');   // 'D'→droite, 'G'→gauche
+      g+=arrow(ox+w/n*(i+.5), oy+hh/2, dir==='D'?'R':'L', Math.min(14, w/n*0.28)); } }
+  if(s.family==='guillotine'){ g+=`<line x1="${ox}" y1="${oy+hh/2}" x2="${ox+w}" y2="${oy+hh/2}" stroke="${mu}" stroke-width="1.5"/>`;
+    g+=arrow(ox+w/2, oy+hh*0.75, 'U', Math.min(14, hh*0.18)); }   // vantail bas = mobile, glisse vers le haut
+  if(s.family==='battant'){
+    if(s.vantaux===2){ g+=vline(ox+w/2);
+      g+=arrow(ox+w*0.25, oy+hh/2, 'L');   // 2 vantaux : flèches TOUJOURS vers l'extérieur
+      g+=arrow(ox+w*0.75, oy+hh/2, 'R'); }
+    else g+=arrow(ox+w/2, oy+hh/2, s.ouvrant==='G'?'L':'R'); }   // flèche = côté du Sens (Tirant gauche→gauche, droit→droite)
+  if(fam.door && s.family!=='porte_patio'){ if(s.panneau==='mi') g+=`<line x1="${ox}" y1="${oy+hh*0.5}" x2="${ox+w}" y2="${oy+hh*0.5}" stroke="${mu}"/>`;
+    g+=arrow(ox+w/2, oy+hh/2, s.ouvrant==='G'?'L':'R'); }   // porte battante : flèche = côté du Sens
   g+=`<line x1="${ox}" y1="${oy+hh+20}" x2="${ox+w}" y2="${oy+hh+20}" stroke="${bl}"/><text x="${ox+w/2}" y="${oy+hh+38}" fill="${bl}" font-size="13" text-anchor="middle">${fmt(s.W)}</text>`;
   g+=`<line x1="${ox-20}" y1="${oy}" x2="${ox-20}" y2="${oy+hh}" stroke="${bl}"/><text x="${ox-26}" y="${oy+hh/2}" fill="${bl}" font-size="13" text-anchor="middle" transform="rotate(-90 ${ox-26} ${oy+hh/2})">${fmt(s.H)}</text>`;
   g+=`<text x="${ox}" y="14" fill="${mu}" font-size="11">${fam.code} — vue extérieure</text></svg>`; return g;
