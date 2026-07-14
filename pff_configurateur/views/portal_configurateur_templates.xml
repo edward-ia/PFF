@@ -43,7 +43,7 @@
         <xpath expr="//thead/tr/th[last()]" position="before">
             <th class="text-center">Statut de fabrication</th>
         </xpath>
-        <xpath expr="//tbody/tr[@t-foreach='orders']/td[last()]" position="before">
+        <xpath expr="//tbody//t[@t-foreach='orders']/tr/td[last()]" position="before">
             <td class="text-center">
                 <span t-if="order.pff_fabrication_status"
                       class="badge rounded-pill text-bg-info">
