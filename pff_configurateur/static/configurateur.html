@@ -899,6 +899,13 @@ window.addEventListener('message',ev=>{ const m=ev.data; if(!m) return;
   else if(m.type==='pff_stations'){ STATIONS_BY_POSTE=m.stations||{}; if(TAB==='bons'||TAB==='valid') renderTab(); } });
 
 renderFamOpts(); resize(); refresh(); loop();
+/* Mode PORTAIL (?portal=1) : le distributeur n'a pas besoin des onglets d'atelier
+   → on ne garde que « Vue 2D cotée » et « Fiche technique ». */
+if(new URLSearchParams(location.search).get('portal')==='1'){
+  ['decoupe','thermos','bons','valid','unites'].forEach(t=>{
+    const el=document.querySelector('#tabs .tab[data-t="'+t+'"]'); if(el) el.remove();
+  });
+}
 try{ window.parent.postMessage({type:'pff_ready'}, '*'); }catch(e){}
 </script>
 </body>
