@@ -9,13 +9,32 @@ class CrmLead(models.Model):
                                             string='Configurations PFF')
     pff_config_count = fields.Integer(compute='_compute_pff_config_count')
     pff_distributor_approved = fields.Boolean(
-        string="Distributeur approuvé", copy=False, readonly=True,
-        help="Coché une fois la demande de distributeur approuvée (contact créé, "
-             "accès portail accordé, liste de prix assignée).")
+        string="Approuver le distributeur", copy=False,
+        help="Cochez et enregistrez pour approuver la demande : crée le contact, "
+             "accorde l'accès au portail (invitation courriel) et assigne la liste "
+             "de prix distributeur. Se verrouille une fois approuvé.")
+    pff_is_distributor_lead = fields.Boolean(
+        string="Demande de distributeur", compute='_compute_pff_is_distributor_lead',
+        help="Vrai si l'opportunité vient de l'équipe des demandes de distributeurs "
+             "(sert à n'afficher la case « Approuver » que sur ces demandes).")
 
     def _compute_pff_config_count(self):
         for lead in self:
             lead.pff_config_count = len(lead.pff_configuration_ids)
+
+    def _compute_pff_is_distributor_lead(self):
+        """Repère les demandes de distributeurs sans coder le nom en dur :
+        équipe désignée par le paramètre système
+        `pff_configurateur.distributor_team_id`, ou à défaut équipe dont le nom
+        contient « distribut »."""
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'pff_configurateur.distributor_team_id')
+        team_id = int(param) if param else False
+        for lead in self:
+            team = lead.team_id
+            lead.pff_is_distributor_lead = bool(team) and (
+                (team_id and team.id == team_id)
+                or 'distribut' in (team.name or '').lower())
 
     def action_pff_configure(self):
         """Bouton intelligent : ouvre la liste des produits configurés du client,
@@ -62,15 +81,24 @@ class CrmLead(models.Model):
                 return pl
         return Pricelist.search([('name', 'ilike', 'distribut')], limit=1)
 
-    def action_pff_approve_distributor(self):
-        """Approuve la demande de distributeur en un clic :
+    def write(self, vals):
+        """Déclenche l'approbation quand la case « Approuver le distributeur »
+        passe de décochée à cochée (front montant uniquement, jamais deux fois)."""
+        newly_approved = self.env['crm.lead']
+        if vals.get('pff_distributor_approved'):
+            newly_approved = self.filtered(lambda l: not l.pff_distributor_approved)
+        res = super().write(vals)
+        for lead in newly_approved:
+            lead._pff_do_approve()
+        return res
+
+    def _pff_do_approve(self):
+        """Approbation distributeur (appelée par `write` quand la case est cochée) :
         crée/relie le contact société, accorde l'accès au portail (invitation
         courriel — le distributeur choisit lui-même son mot de passe) et assigne
-        la liste de prix distributeur. Idempotent et best-effort : chaque étape
-        échoue proprement (note dans le fil) sans jamais bloquer les autres."""
+        la liste de prix distributeur. Best-effort : chaque étape échoue proprement
+        (note dans le fil) sans jamais bloquer les autres."""
         self.ensure_one()
-        if self.pff_distributor_approved:
-            raise UserError(_("Ce distributeur a déjà été approuvé."))
 
         # 1) Contact société (réutilise partner_id s'il existe déjà)
         partner = self.partner_id
@@ -117,15 +145,5 @@ class CrmLead(models.Model):
             notes.append(_("⚠️ Liste de prix distributeur introuvable — assignez-la "
                            "manuellement (onglet Ventes & Achats du contact)."))
 
-        self.pff_distributor_approved = True
         self.message_post(body=_("<b>Distributeur approuvé</b><br/>")
                           + "<br/>".join(notes))
-
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Contact distributeur'),
-            'res_model': 'res.partner',
-            'res_id': partner.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
