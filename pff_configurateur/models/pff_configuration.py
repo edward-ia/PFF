@@ -420,6 +420,12 @@ class PffConfiguration(models.Model):
                 'discount': discount,
             })
         self.sale_order_id = order.id
+        # Rendre le devis VISIBLE et SIGNABLE par le distributeur au portail :
+        # un brouillon reste interne (Odoo le cache au client) → on abonne le
+        # distributeur comme suiveur et on passe le devis en « envoyé » (sent).
+        order.message_subscribe(partner_ids=partner.commercial_partner_id.ids)
+        if order.state == 'draft':
+            order.write({'state': 'sent'})
         return order
 
     # --- Phase D : bon d'achat verre (thermos) créé automatiquement en fabrication ---
