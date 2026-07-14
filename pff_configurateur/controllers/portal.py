@@ -18,7 +18,7 @@ class PffPortalConfigurator(CustomerPortal):
         pour qu'un distributeur ne puisse créer un devis que pour lui-même."""
         return request.env.user.partner_id.commercial_partner_id
 
-    @http.route(['/my/configurateur'], type='http', auth='user')
+    @http.route(['/my/configurateur'], type='http', auth='user', website=True)
     def pff_portal_configurateur(self, **kw):
         return request.render('pff_configurateur.portal_configurateur_page', {
             'page_name': 'pff_configurateur',
