@@ -12,6 +12,11 @@
                 </button>
             </xpath>
             <xpath expr="//header" position="inside">
+                <field name="pff_distributor_approved" invisible="1"/>
+                <button name="action_pff_approve_distributor" type="object"
+                        string="Approuver le distributeur" class="btn-primary"
+                        invisible="pff_distributor_approved"
+                        confirm="Créer le contact société, accorder l'accès au portail (invitation courriel) et assigner la liste de prix distributeur ?"/>
                 <button name="action_pff_new_configuration" type="object"
                         string="Nouvelle configuration" class="btn-primary"/>
             </xpath>
