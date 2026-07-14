@@ -15,11 +15,12 @@
                 <button name="action_pff_new_configuration" type="object"
                         string="Nouvelle configuration" class="btn-primary"/>
             </xpath>
-            <xpath expr="//field[@name='email_from']" position="after">
+            <xpath expr="//notebook" position="before">
                 <field name="pff_is_distributor_lead" invisible="1"/>
-                <field name="pff_distributor_approved" widget="boolean_toggle"
-                       invisible="not pff_is_distributor_lead"
-                       readonly="pff_distributor_approved"/>
+                <group invisible="not pff_is_distributor_lead">
+                    <field name="pff_distributor_approved"
+                           readonly="pff_distributor_approved"/>
+                </group>
             </xpath>
         </field>
     </record>
