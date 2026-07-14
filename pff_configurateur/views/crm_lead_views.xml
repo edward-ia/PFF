@@ -18,8 +18,7 @@
             <xpath expr="//notebook" position="before">
                 <field name="pff_is_distributor_lead" invisible="1"/>
                 <group invisible="not pff_is_distributor_lead">
-                    <field name="pff_distributor_approved"
-                           readonly="pff_distributor_approved"/>
+                    <field name="pff_distributor_approved"/>
                 </group>
             </xpath>
         </field>
