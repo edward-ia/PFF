@@ -36,6 +36,24 @@
         </xpath>
     </template>
 
+    <!-- Colonne « Statut de fabrication » dans la liste des COMMANDES du portail
+         (à côté du statut d'expédition ; s'affiche seulement pour les commandes). -->
+    <template id="portal_my_orders_pff_fab" inherit_id="sale.portal_my_orders"
+              name="Portail PFF : statut de fabrication">
+        <xpath expr="//thead/tr/th[last()]" position="before">
+            <th class="text-center">Statut de fabrication</th>
+        </xpath>
+        <xpath expr="//tbody/tr[@t-foreach='orders']/td[last()]" position="before">
+            <td class="text-center">
+                <span t-if="order.pff_fabrication_status"
+                      class="badge rounded-pill text-bg-info">
+                    <t t-esc="order.pff_fabrication_status"/>
+                </span>
+                <span t-else="" class="text-muted">—</span>
+            </td>
+        </xpath>
+    </template>
+
     <!-- Page portail : le configurateur 3D en pleine page -->
     <template id="portal_configurateur_page" name="Portail PFF : Configurateur">
         <t t-call="portal.portal_layout">
