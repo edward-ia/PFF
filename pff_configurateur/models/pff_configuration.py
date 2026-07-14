@@ -341,6 +341,87 @@ class PffConfiguration(models.Model):
             'target': 'current',
         }
 
+    # --- Portail distributeur : configurateur → devis brouillon ---
+    # Clés de paramètres transmises par le configurateur (miroir exact de la
+    # liste blanche de `configurator_action.js`).
+    _PORTAL_PARAM_KEYS = [
+        'unit', 'cadre', 'verre', 'aspect', 'col_ext', 'col_int', 'moulure',
+        'soufflage', 'grilles', 'imposte', 'quinc', 'coupe', 'moust', 'sections',
+        'ouvrant', 'vantaux', 'panneau', 'sidelights',
+    ]
+
+    def _portal_line_vals(self, d):
+        """Mappe un item validé du configurateur en vals de
+        `pff.configuration.line`. Miroir du parent back-office
+        (`configurator_action.js`, message `pff_valider`)."""
+        self.ensure_one()
+        vals = {
+            'configuration_id': self.id,
+            'family': d.get('family'),
+            'width': d.get('width'),
+            'height': d.get('height'),
+            'description': d.get('description'),
+            'qty': d.get('qty') or 1,
+            'price_unit': d.get('price') or 0,
+            'config_json': json.dumps(d.get('config') or {}),
+            'thermos_json': json.dumps({
+                'glass': d.get('glass') or '',
+                'ep': d.get('ep') or '',
+                'thermos': d.get('thermos') or [],
+            }),
+            'comps_json': json.dumps(d.get('comps') or []),
+            'poste_assign_json': json.dumps(d.get('poste_assign') or {}),
+        }
+        params = d.get('params') or {}
+        for k in self._PORTAL_PARAM_KEYS:
+            v = params.get(k)
+            vals['param_' + k] = '' if v is None else str(v)
+        return vals
+
+    @api.model
+    def _portal_create_from_items(self, partner, items):
+        """Crée une configuration + ses lignes + un devis BROUILLON pour le
+        distributeur `partner`, à partir des items validés au configurateur.
+        Appelé en `sudo` par le contrôleur portail (le partenaire est déjà forcé
+        sur la société du distributeur connecté — jamais un ID venu du client)."""
+        config = self.create({'partner_id': partner.id})
+        Line = self.env['pff.configuration.line']
+        for d in (items or []):
+            if not d.get('family'):
+                continue
+            Line.create(config._portal_line_vals(d))
+        order = config._portal_create_quotation(partner)
+        return config, order
+
+    def _portal_create_quotation(self, partner):
+        """Comme `action_create_quotation`, mais applique la remise en % du
+        distributeur (`pff_distributor_discount`) sur chaque ligne du devis."""
+        self.ensure_one()
+        tmpl = self.env.ref('pff_configurateur.product_pff_configure', raise_if_not_found=False)
+        product = tmpl.product_variant_id if tmpl else False
+        # Remise : d'abord la valeur propre au distributeur, sinon le défaut
+        # global (paramètre système `pff_configurateur.distributor_discount`).
+        discount = partner.commercial_partner_id.pff_distributor_discount or 0.0
+        if not discount:
+            param = self.env['ir.config_parameter'].sudo().get_param(
+                'pff_configurateur.distributor_discount')
+            discount = float(param) if param else 0.0
+        order = self.env['sale.order'].create({
+            'partner_id': partner.id,
+            'origin': self.name,
+        })
+        for line in self.line_ids:
+            self.env['sale.order.line'].create({
+                'order_id': order.id,
+                'product_id': product.id if product else False,
+                'name': line.description or dict(FAMILIES).get(line.family, ''),
+                'product_uom_qty': line.qty,
+                'price_unit': line.price_unit,
+                'discount': discount,
+            })
+        self.sale_order_id = order.id
+        return order
+
     # --- Phase D : bon d'achat verre (thermos) créé automatiquement en fabrication ---
     def _create_glass_po(self):
         """Crée un purchase.order BROUILLON avec une ligne par thermos (mesures

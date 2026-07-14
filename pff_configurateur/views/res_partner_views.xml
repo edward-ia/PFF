@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Remise distributeur (%) sur la fiche contact, à côté de la liste de prix
+         (onglet Ventes &amp; Achats). Réglée par PFF ; appliquée aux devis créés
+         par ce distributeur au portail. -->
+    <record id="view_partner_form_pff_discount" model="ir.ui.view">
+        <field name="name">res.partner.form.pff.distributor.discount</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="sale.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <field name="property_product_pricelist" position="after">
+                <field name="pff_distributor_discount"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
