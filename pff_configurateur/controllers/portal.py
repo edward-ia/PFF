@@ -24,7 +24,7 @@ class PffPortalConfigurator(CustomerPortal):
             'page_name': 'pff_configurateur',
         })
 
-    @http.route(['/my/configurateur/submit'], type='json', auth='user',
+    @http.route(['/my/configurateur/submit'], type='jsonrpc', auth='user',
                 methods=['POST'])
     def pff_portal_configurateur_submit(self, items=None, **kw):
         partner = self._pff_distributor_partner()
