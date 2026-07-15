@@ -394,18 +394,11 @@ class PffConfiguration(models.Model):
         return config, order
 
     def _portal_create_quotation(self, partner):
-        """Comme `action_create_quotation`, mais applique la remise en % du
-        distributeur (`pff_distributor_discount`) sur chaque ligne du devis."""
+        """Comme `action_create_quotation`, mais rend le devis visible et signable
+        au portail (le distributeur en devient suiveur, état « envoyé »)."""
         self.ensure_one()
         tmpl = self.env.ref('pff_configurateur.product_pff_configure', raise_if_not_found=False)
         product = tmpl.product_variant_id if tmpl else False
-        # Remise : d'abord la valeur propre au distributeur, sinon le défaut
-        # global (paramètre système `pff_configurateur.distributor_discount`).
-        discount = partner.commercial_partner_id.pff_distributor_discount or 0.0
-        if not discount:
-            param = self.env['ir.config_parameter'].sudo().get_param(
-                'pff_configurateur.distributor_discount')
-            discount = float(param) if param else 0.0
         order = self.env['sale.order'].create({
             'partner_id': partner.id,
             'origin': self.name,
@@ -417,7 +410,6 @@ class PffConfiguration(models.Model):
                 'name': line.description or dict(FAMILIES).get(line.family, ''),
                 'product_uom_qty': line.qty,
                 'price_unit': line.price_unit,
-                'discount': discount,
             })
         self.sale_order_id = order.id
         # Rendre le devis VISIBLE et SIGNABLE par le distributeur au portail :

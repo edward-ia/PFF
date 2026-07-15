@@ -15,12 +15,6 @@
                 <button name="action_pff_new_configuration" type="object"
                         string="Nouvelle configuration" class="btn-primary"/>
             </xpath>
-            <xpath expr="//notebook" position="before">
-                <field name="pff_is_distributor_lead" invisible="1"/>
-                <group invisible="not pff_is_distributor_lead">
-                    <field name="pff_distributor_approved"/>
-                </group>
-            </xpath>
         </field>
     </record>
 </odoo>
